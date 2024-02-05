@@ -22,7 +22,7 @@ func AddForm(addFrom models.Form, isPublished bool) error {
 		formStatus = "Published"
 	}
 	var documentID int64
-	err := db.Get(&documentID, "SELECT document_id FROM document_ms WHERE document_uuid = $1", addFrom.Document_UUID)
+	err := db.Get(&documentID, "SELECT document_id FROM document_ms WHERE document_uuid = $1", addFrom.DocumentUUID)
 	if err != nil {
 		log.Println("Error getting document_id:", err)
 		return err
@@ -32,9 +32,9 @@ func AddForm(addFrom models.Form, isPublished bool) error {
 		"form_id":     app_id,
 		"form_uuid":   uuidString,
 		"document_id": documentID,
-		"user_id":     addFrom.User_id,
-		"form_number": addFrom.Form_number,
-		"form_ticket": addFrom.Form_ticket,
+		"user_id":     addFrom.UserID,
+		"form_number": addFrom.FormNumber,
+		"form_ticket": addFrom.FormTicket,
 		"form_status": formStatus,
 		"created_by":  "super admin",
 	})
@@ -90,17 +90,17 @@ func UpdateForm(updateForm models.Form, id string, isPublished bool) (models.For
 	}
 
 	var documentID int64
-	err := db.Get(&documentID, "SELECT document_id FROM document_ms WHERE document_uuid = $1", updateForm.Document_UUID)
+	err := db.Get(&documentID, "SELECT document_id FROM document_ms WHERE document_uuid = $1", updateForm.DocumentUUID)
 	if err != nil {
 		log.Println("Error getting application_id:", err)
 		return models.Form{}, err
 	}
 	_, err = db.NamedExec("UPDATE form_ms SET form_number = :form_number, form_ticket = :form_ticket, form_status = :form_status, document_id = :document_id, user_id = :user_id, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id and form_status='Draft'", map[string]interface{}{
-		"form_number": updateForm.Form_number,
-		"form_ticket": updateForm.Form_ticket,
+		"form_number": updateForm.FormNumber,
+		"form_ticket": updateForm.FormTicket,
 		"form_status": formStatus,
 		"document_id": documentID,
-		"user_id":     updateForm.User_id,
+		"user_id":     updateForm.UserID,
 		"updated_by":  updateForm.Updated_by,
 		"updated_at":  currentTime,
 		"id":          id,

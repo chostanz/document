@@ -27,7 +27,7 @@ func AddForm(c echo.Context) error {
 
 	// Validasi spasi untuk Code, Name, dan NumberFormat
 	whitespace := regexp.MustCompile(`^\s`)
-	if whitespace.MatchString(addFormRequest.FormData.Form_ticket) || whitespace.MatchString(addFormRequest.FormData.Form_number) {
+	if whitespace.MatchString(addFormRequest.FormData.FormTicket) || whitespace.MatchString(addFormRequest.FormData.FormNumber) {
 		return c.JSON(http.StatusUnprocessableEntity, &models.Response{
 			Code:    422,
 			Message: "Ticket atau Nomor tidak boleh dimulai dengan spasi!",
@@ -123,7 +123,7 @@ func UpdateForm(c echo.Context) error {
 	}
 
 	whitespace := regexp.MustCompile(`^\s`)
-	if whitespace.MatchString(updateFormRequest.FormData.Form_ticket) {
+	if whitespace.MatchString(updateFormRequest.FormData.FormTicket) {
 		return c.JSON(http.StatusUnprocessableEntity, &models.Response{
 			Code:    422,
 			Message: "Ticket tidak boleh dimulai dengan spasi!",
@@ -131,7 +131,7 @@ func UpdateForm(c echo.Context) error {
 		})
 	}
 
-	if whitespace.MatchString(updateFormRequest.FormData.Form_number) {
+	if whitespace.MatchString(updateFormRequest.FormData.FormNumber) {
 		return c.JSON(http.StatusUnprocessableEntity, &models.Response{
 			Code:    422,
 			Message: "Name tidak boleh dimulai dengan spasi!",
