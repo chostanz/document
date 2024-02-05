@@ -110,7 +110,17 @@ func IsUniqueDoc(uuid, code, name string) (bool, error) {
 
 	return count == 0, nil
 }
+func GetDocumentIDByName(name string) (int, error) {
+	var documentID int
+	err := db.QueryRow("SELECT document_id FROM document_ms WHERE document_name = $1 AND deleted_at IS NULL", name).Scan(&documentID)
+	return documentID, err
+}
 
+func GetDocumentIDByCode(code string) (int, error) {
+	var documentID int
+	err := db.QueryRow("SELECT document_id FROM document_ms WHERE document_code = $1 AND deleted_at IS NULL", code).Scan(&documentID)
+	return documentID, err
+}
 func UpdateDocument(updateDoc models.Document, id string) (models.Document, error) {
 	// username, errUser := GetUsernameByID(userUUID)
 	// if errUser != nil {

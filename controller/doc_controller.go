@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 )
@@ -187,43 +188,45 @@ func UpdateDocument(c echo.Context) error {
 		})
 	}
 	if err == nil {
-		var existingDocumentID int
-		err := db.QueryRow("SELECT document_id FROM document_ms WHERE (document_name = $1 OR document_code = $2) AND deleted_at IS NULL", editDoc.Name, editDoc.Code).Scan(&existingDocumentID)
+		// var existingDocumentID int
+		// err := db.QueryRow("SELECT document_id FROM document_ms WHERE (document_name = $1 OR document_code = $2) AND deleted_at IS NULL", editDoc.Name, editDoc.Code).Scan(&existingDocumentID)
 
-		if err == nil {
-			return c.JSON(http.StatusBadRequest, &models.Response{
-				Code:    400,
-				Message: "Document sudah ada! Document tidak boleh sama!",
-				Status:  false,
-			})
-		}
+		// if err == nil {
+		// 	return c.JSON(http.StatusBadRequest, &models.Response{
+		// 		Code:    400,
+		// 		Message: "Document sudah ada! Document tidak boleh sama!",
+		// 		Status:  false,
+		// 	})
+		// }
 
-		exsitingDoc, err := service.GetDocCodeName(id)
+		existingDoc, err := service.GetDocCodeName(id)
 		if err != nil {
-			log.Printf("Error getting existing user data: %v", err)
+			log.Printf("Error getting existing document data: %v", err)
 			return c.JSON(http.StatusInternalServerError, &models.Response{
 				Code:    500,
 				Message: "Terjadi kesalahan internal pada server.",
 				Status:  false,
 			})
 		}
-
-		if editDoc.Code != exsitingDoc.Code || editDoc.Name != exsitingDoc.Name {
-			isUnique, err := service.IsUniqueDoc(id, editDoc.Code, editDoc.Name)
-			if err != nil {
-				log.Println("Error checking uniqueness:", err)
-				return c.JSON(http.StatusInternalServerError, &models.Response{
-					Code:    500,
-					Message: "Terjadi kesalahan internal pada server.",
+		// Check for uniqueness only if document_code is being updated
+		if editDoc.Code != "" && editDoc.Code != existingDoc.Code {
+			existingDocID, err := service.GetDocumentIDByCode(editDoc.Code)
+			if err == nil && strconv.Itoa(existingDocID) != id {
+				return c.JSON(http.StatusBadRequest, &models.Response{
+					Code:    400,
+					Message: "Document dengan code sudah ada! Document tidak boleh sama!",
 					Status:  false,
 				})
 			}
+		}
 
-			if !isUnique {
-				log.Println("Document sudah ada! Document tidak boleh sama!")
+		// Check for uniqueness only if document_name is being updated
+		if editDoc.Name != "" && editDoc.Name != existingDoc.Name {
+			existingDocID, err := service.GetDocumentIDByName(editDoc.Name)
+			if err == nil && strconv.Itoa(existingDocID) != id {
 				return c.JSON(http.StatusBadRequest, &models.Response{
 					Code:    400,
-					Message: "Document sudah ada! Document tidak boleh sama!",
+					Message: "Document dengan name sudah ada! Document tidak boleh sama!",
 					Status:  false,
 				})
 			}
