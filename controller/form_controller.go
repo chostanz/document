@@ -157,6 +157,13 @@ func UpdateForm(c echo.Context) error {
 			Status:  false,
 		})
 	}
+	if previousContent.FormStatus == "Published" {
+		return c.JSON(http.StatusBadRequest, &models.Response{
+			Code:    400,
+			Message: "Tidak dapat memperbarui dokumen yang sudah dipublish",
+			Status:  false,
+		})
+	}
 
 	_, errService := service.UpdateForm(updateFormRequest.FormData, id, updateFormRequest.IsPublished)
 	if errService != nil {

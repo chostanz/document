@@ -188,17 +188,6 @@ func UpdateDocument(c echo.Context) error {
 		})
 	}
 	if err == nil {
-		// var existingDocumentID int
-		// err := db.QueryRow("SELECT document_id FROM document_ms WHERE (document_name = $1 OR document_code = $2) AND deleted_at IS NULL", editDoc.Name, editDoc.Code).Scan(&existingDocumentID)
-
-		// if err == nil {
-		// 	return c.JSON(http.StatusBadRequest, &models.Response{
-		// 		Code:    400,
-		// 		Message: "Document sudah ada! Document tidak boleh sama!",
-		// 		Status:  false,
-		// 	})
-		// }
-
 		existingDoc, err := service.GetDocCodeName(id)
 		if err != nil {
 			log.Printf("Error getting existing document data: %v", err)
@@ -214,7 +203,7 @@ func UpdateDocument(c echo.Context) error {
 			if err == nil && strconv.Itoa(existingDocID) != id {
 				return c.JSON(http.StatusBadRequest, &models.Response{
 					Code:    400,
-					Message: "Document dengan code sudah ada! Document tidak boleh sama!",
+					Message: "Document dengan code tersebut sudah ada! Document tidak boleh sama!",
 					Status:  false,
 				})
 			}
@@ -226,7 +215,7 @@ func UpdateDocument(c echo.Context) error {
 			if err == nil && strconv.Itoa(existingDocID) != id {
 				return c.JSON(http.StatusBadRequest, &models.Response{
 					Code:    400,
-					Message: "Document dengan name sudah ada! Document tidak boleh sama!",
+					Message: "Document dengan name tersebut sudah ada! Document tidak boleh sama!",
 					Status:  false,
 				})
 			}
