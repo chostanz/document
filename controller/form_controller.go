@@ -4,9 +4,12 @@ import (
 	"database/sql"
 	"document/models"
 	"document/service"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -25,6 +28,64 @@ func AddForm(c echo.Context) error {
 		})
 	}
 
+	tokenString := c.Request().Header.Get("Authorization")
+	secretKey := "secretJwToken"
+
+	if tokenString == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak ditemukan!",
+			"status":  false,
+		})
+	}
+
+	// Periksa apakah tokenString mengandung "Bearer "
+	if !strings.HasPrefix(tokenString, "Bearer ") {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	// Hapus "Bearer " dari tokenString
+	tokenOnly := strings.TrimPrefix(tokenString, "Bearer ")
+
+	//dekripsi token JWE
+	decrypted, err := DecryptJWE(tokenOnly, secretKey)
+	if err != nil {
+		fmt.Println("Gagal mendekripsi token:", err)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	var claims JwtCustomClaims
+	errJ := json.Unmarshal([]byte(decrypted), &claims)
+	if errJ != nil {
+		fmt.Println("Gagal mengurai klaim:", errJ)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+	userUUID := c.Get("user_uuid").(string) // Mengambil userUUID dari konteks
+
+	// Token yang sudah dideskripsi
+	fmt.Println("Token yang sudah dideskripsi:", decrypted)
+	fmt.Println("User UUID:", userUUID)
+
+	// Lakukan validasi token
+	if userUUID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Invalid token atau token tidak ditemukan!",
+			"status":  false,
+		})
+	}
 	// Validasi spasi untuk Code, Name, dan NumberFormat
 	whitespace := regexp.MustCompile(`^\s`)
 	if whitespace.MatchString(addFormRequest.FormData.FormTicket) || whitespace.MatchString(addFormRequest.FormData.FormNumber) {
@@ -39,7 +100,7 @@ func AddForm(c echo.Context) error {
 
 	if errVal == nil {
 		// Gunakan addFormRequest.IsPublished untuk menentukan apakah menyimpan sebagai draft atau mempublish
-		addroleErr := service.AddForm(addFormRequest.FormData, addFormRequest.IsPublished)
+		addroleErr := service.AddForm(addFormRequest.FormData, addFormRequest.IsPublished, userUUID)
 		if addroleErr != nil {
 			log.Print(addroleErr)
 			return c.JSON(http.StatusInternalServerError, &models.Response{
@@ -122,6 +183,65 @@ func UpdateForm(c echo.Context) error {
 		})
 	}
 
+	tokenString := c.Request().Header.Get("Authorization")
+	secretKey := "secretJwToken"
+
+	if tokenString == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak ditemukan!",
+			"status":  false,
+		})
+	}
+
+	// Periksa apakah tokenString mengandung "Bearer "
+	if !strings.HasPrefix(tokenString, "Bearer ") {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	// Hapus "Bearer " dari tokenString
+	tokenOnly := strings.TrimPrefix(tokenString, "Bearer ")
+
+	//dekripsi token JWE
+	decrypted, err := DecryptJWE(tokenOnly, secretKey)
+	if err != nil {
+		fmt.Println("Gagal mendekripsi token:", err)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	var claims JwtCustomClaims
+	errJ := json.Unmarshal([]byte(decrypted), &claims)
+	if errJ != nil {
+		fmt.Println("Gagal mengurai klaim:", errJ)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+	userUUID := c.Get("user_uuid").(string) // Mengambil userUUID dari konteks
+
+	// Token yang sudah dideskripsi
+	fmt.Println("Token yang sudah dideskripsi:", decrypted)
+	fmt.Println("User UUID:", userUUID)
+
+	// Lakukan validasi token
+	if userUUID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Invalid token atau token tidak ditemukan!",
+			"status":  false,
+		})
+	}
+
 	whitespace := regexp.MustCompile(`^\s`)
 	if whitespace.MatchString(updateFormRequest.FormData.FormTicket) {
 		return c.JSON(http.StatusUnprocessableEntity, &models.Response{
@@ -165,7 +285,7 @@ func UpdateForm(c echo.Context) error {
 		})
 	}
 
-	_, errService := service.UpdateForm(updateFormRequest.FormData, id, updateFormRequest.IsPublished)
+	_, errService := service.UpdateForm(updateFormRequest.FormData, id, updateFormRequest.IsPublished, userUUID)
 	if errService != nil {
 		log.Println("Kesalahan selama pembaruan:", errService)
 		return c.JSON(http.StatusInternalServerError, &models.Response{

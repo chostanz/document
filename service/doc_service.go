@@ -101,10 +101,6 @@ func GetUserInfoFromToken(tokenStr string) (string, error) {
 
 func AddDocument(addDocument models.Document, userUUID string) error {
 
-	_, errP := GetUserInfoFromToken(userUUID)
-	if errP != nil {
-		return errP
-	}
 	// username, errP := GetUsernameByID(userUUID)
 	// if errP != nil {
 	// 	return errP
@@ -122,7 +118,7 @@ func AddDocument(addDocument models.Document, userUUID string) error {
 		"document_code":          addDocument.Code,
 		"document_name":          addDocument.Name,
 		"document_format_number": addDocument.NumberFormat,
-		"created_by":             "super admin",
+		"created_by":             userUUID,
 	})
 	if err != nil {
 		return err

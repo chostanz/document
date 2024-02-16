@@ -84,12 +84,20 @@ func AddDocument(c echo.Context) error {
 			"status":  false,
 		})
 	}
-	userUUID := c.Get("user_uuid").(string)
-	ye, errK := service.GetUserInfoFromToken(tokenOnly)
-	if errK != nil {
-		log.Print(errK, ye)
-		return c.JSON(http.StatusUnauthorized, "Invalid token atau token tidak ditemukannnn!")
-	}
+	userUUID := c.Get("user_uuid").(string) // Mengambil userUUID dari konteks
+
+	// Token yang sudah dideskripsi
+	fmt.Println("Token yang sudah dideskripsi:", decrypted)
+
+	// Tidak perlu memanggil GetUserInfoFromToken di sini, gunakan userUUID langsung
+	// ye, errK := service.GetUserInfoFromToken(tokenOnly)
+	// if errK != nil {
+	//     log.Print(errK, ye)
+	//     return c.JSON(http.StatusUnauthorized, "Invalid token atau token tidak ditemukannnn!")
+	// }
+
+	// User UUID
+	fmt.Println("User UUID:", userUUID)
 
 	// Lakukan validasi token
 	if userUUID == "" {

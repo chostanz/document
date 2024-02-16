@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func AddForm(addFrom models.Form, isPublished bool) error {
+func AddForm(addFrom models.Form, isPublished bool, userUUID string) error {
 	currentTimestamp := time.Now().UnixNano() / int64(time.Microsecond)
 	uniqueID := uuid.New().ID()
 
@@ -36,7 +36,7 @@ func AddForm(addFrom models.Form, isPublished bool) error {
 		"form_number": addFrom.FormNumber,
 		"form_ticket": addFrom.FormTicket,
 		"form_status": formStatus,
-		"created_by":  "super admin",
+		"created_by":  userUUID,
 	})
 
 	if err != nil {
@@ -75,7 +75,7 @@ func ShowFormById(id string) (models.Forms, error) {
 
 }
 
-func UpdateForm(updateForm models.Form, id string, isPublished bool) (models.Form, error) {
+func UpdateForm(updateForm models.Form, id string, isPublished bool, userUUID string) (models.Form, error) {
 	// username, errUser := GetUsernameByID(userUUID)
 	// if errUser != nil {
 	// 	log.Print(errUser)
@@ -100,7 +100,7 @@ func UpdateForm(updateForm models.Form, id string, isPublished bool) (models.For
 		"form_ticket": updateForm.FormTicket,
 		"form_status": formStatus,
 		"document_id": documentID,
-		"user_id":     updateForm.UserID,
+		"user_id":     userUUID,
 		"updated_by":  updateForm.Updated_by,
 		"updated_at":  currentTime,
 		"id":          id,
