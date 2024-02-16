@@ -4,16 +4,107 @@ import (
 	"database/sql"
 	"document/database"
 	"document/models"
+	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
+	jose "github.com/dvsekhvalnov/jose2go"
+	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 )
 
 var db = database.Connection()
 
-func AddDocument(addDocument models.Document) error {
+type JwtCustomClaims struct {
+	UserUUID string `json:"user_uuid"`
+	// AppRoleId          int `json:"application_role_id"`
+	// DivisionId         int `json:"division_id"`
+	jwt.StandardClaims // Embed the StandardClaims struct
 
+}
+
+func DecryptJWE(jweToken string, secretKey string) (string, error) {
+	// Dekripsi token JWE
+	decrypted, _, err := jose.Decode(jweToken, secretKey)
+	if err != nil {
+		return "", fmt.Errorf("Gagal mendekripsi token: %s, error: %v", jweToken, err)
+	}
+	return decrypted, nil
+}
+
+func GetUserInfoFromToken(tokenStr string) (string, error) {
+	// // Dekripsi token JWE
+	// secretKey := "secretJwToken"
+	// decrypted, err := DecryptJWE(tokenStr, secretKey)
+	// if err != nil {
+	// 	return "", fmt.Errorf("Gagal mendekripsi token: %v", err)
+	// }
+
+	// Parse token JWT yang telah didekripsi
+	log.Print("token str ", tokenStr)
+	var claims JwtCustomClaims
+	if err := json.Unmarshal([]byte(tokenStr), &claims); err != nil {
+		return "", fmt.Errorf("Gagal mengurai klaim: %v", err)
+	}
+
+	// Mengambil nilai user_uuid dari klaim
+	userUUID := claims.UserUUID
+	log.Print("USER UUID : ", userUUID)
+	return userUUID, nil
+}
+
+// func GetUserInfoFromToken(tokenStr string) (string, error) {
+// 	secretKey := "secretJwToken" // Ganti dengan kunci yang benar
+
+// 	// Dekripsi token JWE
+// 	decrypted, err := DecryptJWE(tokenStr, secretKey)
+// 	if err != nil {
+// 		fmt.Println("Gagal mendekripsi token woy:", err)
+// 		return "", err
+// 	}
+
+// 	// Parse token JWT yang telah didekripsi
+// 	var claims JwtCustomClaims
+// 	err = json.Unmarshal([]byte(decrypted), &claims)
+// 	if err != nil {
+// 		fmt.Println("Gagal mengurai klaim:", err)
+// 		return "", err
+// 	}
+
+// 	// Mengambil nilai user_uuid dari klaim
+// 	userUUID, ok := claims["user_uuid"].(string)
+// 	if !ok {
+// 		return "", errors.New("Tidak dapat menemukan user_uuid dalam token")
+// 	}
+
+// 	return userUUID, nil
+// }
+
+// // // Mengembalikan user_uuid dari token
+// // return claims.UserUUID, nil
+// parts := strings.Split(tokenStr, ".")
+
+// // Mengurai bagian terenkripsi token (payload)
+// payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+// if err != nil {
+// 	return "", fmt.Errorf("Gagal mendekode payload token: %v", err)
+// }
+
+// fmt.Println("Payload yang diuraikan:", string(payload))
+
+// // Parse payload sebagai struktur yang sesuai
+// var claims map[string]interface{}
+// if err := json.Unmarshal(payload, &claims); err != nil {
+// 	return "", fmt.Errorf("Gagal mengurai klaim: %v", err)
+// }
+
+func AddDocument(addDocument models.Document, userUUID string) error {
+
+	_, errP := GetUserInfoFromToken(userUUID)
+	if errP != nil {
+		return errP
+	}
 	// username, errP := GetUsernameByID(userUUID)
 	// if errP != nil {
 	// 	return errP
@@ -31,7 +122,7 @@ func AddDocument(addDocument models.Document) error {
 		"document_code":          addDocument.Code,
 		"document_name":          addDocument.Name,
 		"document_format_number": addDocument.NumberFormat,
-		"created_by":             addDocument.Created_by,
+		"created_by":             "super admin",
 	})
 	if err != nil {
 		return err

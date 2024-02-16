@@ -15,6 +15,6 @@ func main() {
 	e.Use(middleware.CORS())
 	customValidator := &utils.CustomValidator{Validator: validator.New()}
 	e.Validator = customValidator
-	e.Logger.Fatal(e.Start(":8080"))
+	e.Logger.Fatal(e.Start(":1234"))
 
 }

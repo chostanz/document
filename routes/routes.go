@@ -2,6 +2,7 @@ package routes
 
 import (
 	"document/controller"
+	"document/middleware"
 
 	"github.com/labstack/echo/v4"
 )
@@ -9,6 +10,8 @@ import (
 func Route() *echo.Echo {
 	e := echo.New()
 
+	// superAdminGroup := r.Group("/superadmin")
+	e.Use(middleware.AuthMiddleware)
 	e.GET("/document", controller.GetAllDoc)
 	e.GET("/document/:id", controller.ShowDocById)
 	e.POST("/document/add", controller.AddDocument)

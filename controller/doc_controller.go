@@ -5,17 +5,100 @@ import (
 	"document/database"
 	"document/models"
 	"document/service"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 
+	jose "github.com/dvsekhvalnov/jose2go"
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 )
 
 var db = database.Connection()
 
+func DecryptJWE(jweToken string, secretKey string) (string, error) {
+	// Dekripsi token JWE
+	decrypted, _, err := jose.Decode(jweToken, secretKey)
+	if err != nil {
+		return "", err
+	}
+	return decrypted, nil
+}
+
+type JwtCustomClaims struct {
+	UserID   int    `json:"user_id"`
+	UserUUID string `json:"user_uuid"`
+	RoleCode string `json:"role_code"`
+	// AppRoleId          int `json:"application_role_id"`
+	DivisionTitle      string `json:"division_title"`
+	jwt.StandardClaims        // Embed the StandardClaims struct
+
+}
+
 func AddDocument(c echo.Context) error {
+	tokenString := c.Request().Header.Get("Authorization")
+	secretKey := "secretJwToken"
+
+	if tokenString == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak ditemukan!",
+			"status":  false,
+		})
+	}
+
+	// Periksa apakah tokenString mengandung "Bearer "
+	if !strings.HasPrefix(tokenString, "Bearer ") {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	// Hapus "Bearer " dari tokenString
+	tokenOnly := strings.TrimPrefix(tokenString, "Bearer ")
+
+	//dekripsi token JWE
+	decrypted, err := DecryptJWE(tokenOnly, secretKey)
+	if err != nil {
+		fmt.Println("Gagal mendekripsi token:", err)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	var claims JwtCustomClaims
+	errJ := json.Unmarshal([]byte(decrypted), &claims)
+	if errJ != nil {
+		fmt.Println("Gagal mengurai klaim:", errJ)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+	userUUID := c.Get("user_uuid").(string)
+	ye, errK := service.GetUserInfoFromToken(tokenOnly)
+	if errK != nil {
+		log.Print(errK, ye)
+		return c.JSON(http.StatusUnauthorized, "Invalid token atau token tidak ditemukannnn!")
+	}
+
+	// Lakukan validasi token
+	if userUUID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Invalid token atau token tidak ditemukan!",
+			"status":  false,
+		})
+	}
 	var addDocument models.Document
 	if err := c.Bind(&addDocument); err != nil {
 		return c.JSON(http.StatusBadRequest, &models.Response{
@@ -64,7 +147,7 @@ func AddDocument(c echo.Context) error {
 				Status:  false,
 			})
 		} else {
-			addroleErr := service.AddDocument(addDocument)
+			addroleErr := service.AddDocument(addDocument, userUUID)
 			if addroleErr != nil {
 				log.Print(addroleErr)
 				return c.JSON(http.StatusInternalServerError, &models.Response{
