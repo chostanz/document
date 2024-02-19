@@ -1,14 +1,30 @@
 package service
 
 import (
+	"database/sql"
 	"document/models"
+	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-func AddForm(addFrom models.Form, isPublished bool, userUUID string) error {
+func GetUserIdFromToken(tokenStr string) (int, error) {
+	log.Print("token str ", tokenStr)
+	var claims JwtCustomClaims
+	if err := json.Unmarshal([]byte(tokenStr), &claims); err != nil {
+		return 0, fmt.Errorf("Gagal mengurai klaim: %v", err)
+	}
+
+	// Mengambil nilai user_uuid dari klaim
+	userID := claims.UserID
+	log.Print("USER ID : ", userID)
+	return userID, nil
+}
+
+func AddForm(addFrom models.Form, isPublished bool, username string, userID int) error {
 	currentTimestamp := time.Now().UnixNano() / int64(time.Microsecond)
 	uniqueID := uuid.New().ID()
 
@@ -32,11 +48,11 @@ func AddForm(addFrom models.Form, isPublished bool, userUUID string) error {
 		"form_id":     app_id,
 		"form_uuid":   uuidString,
 		"document_id": documentID,
-		"user_id":     addFrom.UserID,
+		"user_id":     userID,
 		"form_number": addFrom.FormNumber,
 		"form_ticket": addFrom.FormTicket,
 		"form_status": formStatus,
-		"created_by":  userUUID,
+		"created_by":  username,
 	})
 
 	if err != nil {
@@ -49,8 +65,8 @@ func GetAllForm() ([]models.Forms, error) {
 
 	form := []models.Forms{}
 
-	//rows, errSelect := db.Queryx("SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.user_id, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.deleted_at IS NULL")
-	rows, errSelect := db.Queryx("select form_uuid, form_number, form_ticket, form_status, document_id, user_id, created_by, created_at, updated_by, updated_at from form_ms WHERE deleted_at IS NULL")
+	rows, errSelect := db.Queryx("SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.deleted_at IS NULL")
+	//rows, errSelect := db.Queryx("select form_uuid, form_number, form_ticket, form_status, document_id, user_id, created_by, created_at, updated_by, updated_at from form_ms WHERE deleted_at IS NULL")
 	if errSelect != nil {
 		return nil, errSelect
 	}
@@ -63,6 +79,24 @@ func GetAllForm() ([]models.Forms, error) {
 
 	return form, nil
 }
+
+func MyForm(userID int) ([]models.Forms, error) {
+	var form []models.Forms
+
+	errSelect := db.Select(&form, "SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.user_id = $1 AND f.deleted_at IS NULL", userID)
+	//rows, errSelect := db.Queryx("select form_uuid, form_number, form_ticket, form_status, document_id, user_id, created_by, created_at, updated_by, updated_at from form_ms WHERE deleted_at IS NULL")
+	if errSelect != nil {
+		log.Print(errSelect)
+		return nil, errSelect
+	}
+
+	if len(form) == 0 {
+		return nil, sql.ErrNoRows
+	}
+
+	return form, nil
+}
+
 func ShowFormById(id string) (models.Forms, error) {
 	var form models.Forms
 
@@ -75,7 +109,7 @@ func ShowFormById(id string) (models.Forms, error) {
 
 }
 
-func UpdateForm(updateForm models.Form, id string, isPublished bool, userUUID string) (models.Form, error) {
+func UpdateForm(updateForm models.Form, id string, isPublished bool, username string, userID int) (models.Form, error) {
 	// username, errUser := GetUsernameByID(userUUID)
 	// if errUser != nil {
 	// 	log.Print(errUser)
@@ -100,8 +134,8 @@ func UpdateForm(updateForm models.Form, id string, isPublished bool, userUUID st
 		"form_ticket": updateForm.FormTicket,
 		"form_status": formStatus,
 		"document_id": documentID,
-		"user_id":     userUUID,
-		"updated_by":  updateForm.Updated_by,
+		"user_id":     userID,
+		"updated_by":  username,
 		"updated_at":  currentTime,
 		"id":          id,
 	})

@@ -33,6 +33,7 @@ type JwtCustomClaims struct {
 	UserID   int    `json:"user_id"`
 	UserUUID string `json:"user_uuid"`
 	RoleCode string `json:"role_code"`
+	UserName string `json:"user_name"`
 	// AppRoleId          int `json:"application_role_id"`
 	DivisionTitle      string `json:"division_title"`
 	jwt.StandardClaims        // Embed the StandardClaims struct
@@ -84,7 +85,7 @@ func AddDocument(c echo.Context) error {
 			"status":  false,
 		})
 	}
-	userUUID := c.Get("user_uuid").(string) // Mengambil userUUID dari konteks
+	userName := c.Get("user_name").(string) // Mengambil userUUID dari konteks
 
 	// Token yang sudah dideskripsi
 	fmt.Println("Token yang sudah dideskripsi:", decrypted)
@@ -97,10 +98,10 @@ func AddDocument(c echo.Context) error {
 	// }
 
 	// User UUID
-	fmt.Println("User UUID:", userUUID)
+	fmt.Println("User name:", userName)
 
 	// Lakukan validasi token
-	if userUUID == "" {
+	if userName == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
 			"code":    401,
 			"message": "Invalid token atau token tidak ditemukan!",
@@ -155,7 +156,7 @@ func AddDocument(c echo.Context) error {
 				Status:  false,
 			})
 		} else {
-			addroleErr := service.AddDocument(addDocument, userUUID)
+			addroleErr := service.AddDocument(addDocument, userName)
 			if addroleErr != nil {
 				log.Print(addroleErr)
 				return c.JSON(http.StatusInternalServerError, &models.Response{
@@ -237,6 +238,67 @@ func UpdateDocument(c echo.Context) error {
 		})
 	}
 
+	tokenString := c.Request().Header.Get("Authorization")
+	secretKey := "secretJwToken"
+
+	if tokenString == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak ditemukan!",
+			"status":  false,
+		})
+	}
+
+	// Periksa apakah tokenString mengandung "Bearer "
+	if !strings.HasPrefix(tokenString, "Bearer ") {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	// Hapus "Bearer " dari tokenString
+	tokenOnly := strings.TrimPrefix(tokenString, "Bearer ")
+
+	//dekripsi token JWE
+	decrypted, err := DecryptJWE(tokenOnly, secretKey)
+	if err != nil {
+		fmt.Println("Gagal mendekripsi token:", err)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	var claims JwtCustomClaims
+	errJ := json.Unmarshal([]byte(decrypted), &claims)
+	if errJ != nil {
+		fmt.Println("Gagal mengurai klaim:", errJ)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+	userName := c.Get("user_name").(string) // Mengambil userUUID dari konteks
+
+	// Token yang sudah dideskripsi
+	fmt.Println("Token yang sudah dideskripsi:", decrypted)
+
+	// User UUID
+	fmt.Println("User name:", userName)
+
+	// Lakukan validasi token
+	if userName == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Invalid token atau token tidak ditemukan!",
+			"status":  false,
+		})
+	}
+
 	var editDoc models.Document
 	if err := c.Bind(&editDoc); err != nil {
 		return c.JSON(http.StatusBadRequest, &models.Response{
@@ -270,7 +332,7 @@ func UpdateDocument(c echo.Context) error {
 		})
 	}
 
-	err := c.Validate(&editDoc)
+	err = c.Validate(&editDoc)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, &models.Response{
 			Code:    422,
@@ -312,7 +374,7 @@ func UpdateDocument(c echo.Context) error {
 			}
 		}
 
-		_, errService := service.UpdateDocument(editDoc, id)
+		_, errService := service.UpdateDocument(editDoc, id, userName)
 		if errService != nil {
 			log.Println("Kesalahan selama pembaruan:", errService)
 			return c.JSON(http.StatusInternalServerError, &models.Response{

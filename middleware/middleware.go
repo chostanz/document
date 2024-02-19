@@ -12,11 +12,12 @@ import (
 )
 
 type JwtCustomClaims struct {
-	// UserId   int    `json:"user_id"`
+	UserId             int    `json:"user_id"`
 	UserUUID           string `json:"user_uuid"`
 	AppRoleId          int    `json:"application_role_id"`
 	DivisionTitle      string `json:"division_title"`
 	RoleCode           string `json:"role_code"`
+	Username           string `json:"user_name"`
 	jwt.StandardClaims        // Embed the StandardClaims struct
 
 }
@@ -260,6 +261,8 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		// fmt.Println("UserID:", claims.UserId)
 
 		userUUID := claims.UserUUID // Mengakses UserID langsung
+		username := claims.Username
+		userID := claims.UserId
 		// roleID := claims.AppRoleId
 		// divisionTitle := claims.DivisionTitle
 		// roleCode := claims.RoleCode
@@ -267,10 +270,15 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		// 	log.Print(roleCode)
 		// }
 
+		fmt.Println("User ID:", userID)
 		fmt.Println("User UUID:", userUUID)
+		fmt.Println("User Name:", username)
+
 		// fmt.Println("Role Code:", roleCode)
 
 		c.Set("user_uuid", userUUID)
+		c.Set("user_name", username)
+		c.Set("user_id", userID)
 		// c.Set("application_role_id", roleID)
 		// c.Set("division_title", divisionTitle)
 		// c.Set("role_code", roleCode)

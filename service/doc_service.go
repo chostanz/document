@@ -18,6 +18,8 @@ var db = database.Connection()
 
 type JwtCustomClaims struct {
 	UserUUID string `json:"user_uuid"`
+	UserName string `json:"user_name"`
+	UserID   int    `json:"user_id"`
 	// AppRoleId          int `json:"application_role_id"`
 	// DivisionId         int `json:"division_id"`
 	jwt.StandardClaims // Embed the StandardClaims struct
@@ -52,6 +54,27 @@ func GetUserInfoFromToken(tokenStr string) (string, error) {
 	userUUID := claims.UserUUID
 	log.Print("USER UUID : ", userUUID)
 	return userUUID, nil
+}
+
+func GetUserNameFromToken(tokenStr string) (string, error) {
+	// // Dekripsi token JWE
+	// secretKey := "secretJwToken"
+	// decrypted, err := DecryptJWE(tokenStr, secretKey)
+	// if err != nil {
+	// 	return "", fmt.Errorf("Gagal mendekripsi token: %v", err)
+	// }
+
+	// Parse token JWT yang telah didekripsi
+	log.Print("token str ", tokenStr)
+	var claims JwtCustomClaims
+	if err := json.Unmarshal([]byte(tokenStr), &claims); err != nil {
+		return "", fmt.Errorf("Gagal mengurai klaim: %v", err)
+	}
+
+	// Mengambil nilai user_uuid dari klaim
+	username := claims.UserName
+	log.Print("USER UUID : ", username)
+	return username, nil
 }
 
 // func GetUserInfoFromToken(tokenStr string) (string, error) {
@@ -99,7 +122,7 @@ func GetUserInfoFromToken(tokenStr string) (string, error) {
 // 	return "", fmt.Errorf("Gagal mengurai klaim: %v", err)
 // }
 
-func AddDocument(addDocument models.Document, userUUID string) error {
+func AddDocument(addDocument models.Document, username string) error {
 
 	// username, errP := GetUsernameByID(userUUID)
 	// if errP != nil {
@@ -118,7 +141,7 @@ func AddDocument(addDocument models.Document, userUUID string) error {
 		"document_code":          addDocument.Code,
 		"document_name":          addDocument.Name,
 		"document_format_number": addDocument.NumberFormat,
-		"created_by":             userUUID,
+		"created_by":             username,
 	})
 	if err != nil {
 		return err
@@ -208,7 +231,7 @@ func GetDocumentIDByCode(code string) (int, error) {
 	err := db.QueryRow("SELECT document_id FROM document_ms WHERE document_code = $1 AND deleted_at IS NULL", code).Scan(&documentID)
 	return documentID, err
 }
-func UpdateDocument(updateDoc models.Document, id string) (models.Document, error) {
+func UpdateDocument(updateDoc models.Document, id string, username string) (models.Document, error) {
 	// username, errUser := GetUsernameByID(userUUID)
 	// if errUser != nil {
 	// 	log.Print(errUser)
@@ -222,7 +245,7 @@ func UpdateDocument(updateDoc models.Document, id string) (models.Document, erro
 		"document_code":          updateDoc.Code,
 		"document_name":          updateDoc.Name,
 		"document_format_number": updateDoc.NumberFormat,
-		"updated_by":             updateDoc.Updated_by,
+		"updated_by":             username,
 		"updated_at":             currentTime,
 		"id":                     id,
 	})

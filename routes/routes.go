@@ -22,5 +22,7 @@ func Route() *echo.Echo {
 	e.POST("/form/add", controller.AddForm)
 	e.PUT("/form/update/:id", controller.UpdateForm)
 
+	e.GET("/my/form", controller.MyForm)
+
 	return e
 }
