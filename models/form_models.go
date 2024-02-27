@@ -8,8 +8,9 @@ import (
 type Form struct {
 	UUID         string         `json:"form_uuid" db:"form_uuid"`
 	DocumentUUID string         `json:"document_uuid" db:"document_uuid" validate:"required"`
+	DocumentID   int64          `json:"document_id" db:"document_id"`
 	UserID       int            `json:"user_id" db:"user_id" validate:"required"`
-	FormNumber   string         `json:"form_number" db:"form_number" validate:"required"`
+	FormNumber   string         `json:"form_number" db:"form_number"`
 	FormTicket   string         `json:"form_ticket" db:"form_ticket" validate:"required"`
 	FormStatus   string         `json:"form_status" db:"form_status"`
 	Created_by   string         `json:"created_by" db:"created_by"`

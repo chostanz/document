@@ -4,27 +4,137 @@ import (
 	"database/sql"
 	"document/models"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-func GetUserIdFromToken(tokenStr string) (int, error) {
-	log.Print("token str ", tokenStr)
+// func GetUserIdFromToken(tokenStr string) (int, error) {
+// 	log.Print("token str ", tokenStr)
+// 	var claims JwtCustomClaims
+// 	if err := json.Unmarshal([]byte(tokenStr), &claims); err != nil {
+// 		return 0, fmt.Errorf("Gagal mengurai klaim: %v", err)
+// 	}
+
+// 	// Mengambil nilai user_uuid dari klaim
+// 	userID := claims.UserID
+// 	log.Print("USER ID : ", userID)
+// 	return userID, nil
+// }
+
+func GetUserIdFromToken(tokenStr string) (int, string, error) {
 	var claims JwtCustomClaims
 	if err := json.Unmarshal([]byte(tokenStr), &claims); err != nil {
-		return 0, fmt.Errorf("Gagal mengurai klaim: %v", err)
+		return 0, "", fmt.Errorf("Gagal mengurai klaim: %v", err)
 	}
 
-	// Mengambil nilai user_uuid dari klaim
 	userID := claims.UserID
-	log.Print("USER ID : ", userID)
-	return userID, nil
+	divisionTitle := claims.DivisionTitle
+
+	log.Println("USER ID : ", userID)
+	log.Println("DIVISION TITLE : ", divisionTitle)
+	return userID, divisionTitle, nil
 }
 
-func AddForm(addFrom models.Form, isPublished bool, username string, userID int) error {
+func GetDivisionCode(tokenStr string) (string, error) {
+	var claims JwtCustomClaims
+	if err := json.Unmarshal([]byte(tokenStr), &claims); err != nil {
+		return "", fmt.Errorf("Gagal mengurai klaim: %v", err)
+	}
+	divisionCode := claims.DivisionCode
+
+	log.Println("Division Code: ", divisionCode)
+	return divisionCode, nil
+}
+
+func GetDocumentCode(documentID int64) (string, error) {
+	var documentCode string
+	err := db.Get(&documentCode, "SELECT document_code FROM document_ms WHERE document_id = $1", documentID)
+
+	if err != nil {
+		log.Println("Error getting document code:", err)
+	}
+	return documentCode, nil
+}
+func convertToRoman(num int) (string, error) {
+	if num < 1 || num > 12 {
+		return "", errors.New("Month out of range")
+	}
+
+	// Define Roman numeral representations for each digit
+	romans := []struct {
+		value   int
+		numeral string
+	}{
+		{10, "X"},
+		{9, "IX"},
+		{5, "V"},
+		{4, "IV"},
+		{1, "I"},
+	}
+
+	var result strings.Builder
+
+	for _, r := range romans {
+		for num >= r.value {
+			result.WriteString(r.numeral)
+			num -= r.value
+		}
+	}
+
+	return result.String(), nil
+}
+func generateFormNumber(documentID int64, divisionCode string) (string, error) {
+
+	documentCode, err := GetDocumentCode(documentID)
+	if err != nil {
+		return "", err
+	}
+
+	// Get the latest form number for the given document ID
+	var latestFormNumber sql.NullString
+	err = db.Get(&latestFormNumber, "SELECT MAX(form_number) FROM form_ms WHERE document_id = $1", documentID)
+	if err != nil {
+		log.Println("Error getting latest form number:", err)
+		return "", err
+	}
+
+	// Initialize formNumber to 1 if latestFormNumber is NULL
+	formNumber := 1
+	if latestFormNumber.Valid {
+		// Parse the latest form number
+		var latestFormNumberInt int
+		_, err := fmt.Sscanf(latestFormNumber.String, "%d", &latestFormNumberInt)
+		if err != nil {
+			log.Println("Error parsing latest form number:", err)
+			return "", err
+		}
+		// Increment the latest form number
+		formNumber = latestFormNumberInt + 1
+	}
+
+	// Get current year and month
+	year := time.Now().Year()
+	month := time.Now().Month()
+
+	// Convert month to Roman numeral
+	romanMonth, err := convertToRoman(int(month))
+	if err != nil {
+		log.Println("Error converting month to Roman numeral:", err)
+		return "", err
+	}
+
+	// Format the form number according to the specified format
+	return fmt.Sprintf("%04d/%s/%s/%s/%d", formNumber, divisionCode, documentCode, romanMonth, year), nil
+}
+
+func AddForm(addFrom models.Form, isPublished bool, username string, userID int, divisionCode string) error {
+
+	var documentCode string
 	currentTimestamp := time.Now().UnixNano() / int64(time.Microsecond)
 	uniqueID := uuid.New().ID()
 
@@ -44,12 +154,26 @@ func AddForm(addFrom models.Form, isPublished bool, username string, userID int)
 		return err
 	}
 
-	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, form_number, form_ticket, form_status, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :form_number, :form_ticket, :form_status, :created_by)", map[string]interface{}{
+	err = db.Get(&documentCode, "SELECT document_code FROM document_ms WHERE document_uuid = $1", addFrom.DocumentUUID)
+	if err != nil {
+		log.Println("Error getting document code:", err)
+		return err
+	}
+
+	// Generate form number based on document code
+	formNumber, err := generateFormNumber(documentID, divisionCode)
+	if err != nil {
+		// Handle error
+		log.Println("Error generating form number:", err)
+		return err
+	}
+
+	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, form_number,  form_ticket, form_status, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :form_number, :form_ticket, :form_status, :created_by)", map[string]interface{}{
 		"form_id":     app_id,
 		"form_uuid":   uuidString,
 		"document_id": documentID,
 		"user_id":     userID,
-		"form_number": addFrom.FormNumber,
+		"form_number": formNumber,
 		"form_ticket": addFrom.FormTicket,
 		"form_status": formStatus,
 		"created_by":  username,
@@ -58,6 +182,11 @@ func AddForm(addFrom models.Form, isPublished bool, username string, userID int)
 	if err != nil {
 		return err
 	}
+
+	// _, err = db.Exec("SET LOCAL my_vars.division_code TO $1", divisionCode)
+	// if err != nil {
+	// 	return err
+	// }
 	return nil
 }
 
@@ -97,11 +226,80 @@ func MyForm(userID int) ([]models.Forms, error) {
 	return form, nil
 }
 
+func FormByDivision(divisionCode string) ([]models.Forms, error) {
+	var form []models.Forms
+
+	errSelect := db.Select(&form, `
+    SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name 
+    FROM form_ms f 
+    JOIN document_ms d ON f.document_id = d.document_id 
+    WHERE f.deleted_at IS NULL AND SPLIT_PART(f.form_number, '/', 2) = $1
+`, divisionCode)
+
+	if errSelect != nil {
+		log.Print(errSelect)
+		return nil, errSelect
+	}
+
+	if len(form) == 0 {
+		return nil, sql.ErrNoRows
+	}
+
+	return form, nil
+}
+
+// func GetDivisionFromToken(tokenStr string) (string, error) {
+// 	log.Print("token str ", tokenStr)
+// 	var claims JwtCustomClaims
+// 	if err := json.Unmarshal([]byte(tokenStr), &claims); err != nil {
+// 		return "", fmt.Errorf("Gagal mengurai klaim: %v", err)
+// 	}
+
+// 	// Mengambil nilai user_uuid dari klaim
+// 	divisionTitle := claims.DivisionTitle
+// 	log.Print("USER Division Title : ", divisionTitle)
+// 	return divisionTitle, nil
+// }
+
+// func GetDivisionFromToken(tokenStr string) (string, error) {
+// 	var claims JwtCustomClaims
+// 	// Menguraikan token JWT tanpa memeriksa tanda tangan, karena hanya divisi yang kita butuhkan.
+// 	_, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &claims)
+// 	if err != nil {
+// 		return "", fmt.Errorf("gagal mengurai klaim: %v", err)
+// 	}
+
+// 	// Mengambil division_title dari klaim
+// 	divisionTitle := claims.DivisionTitle
+// 	return divisionTitle, nil
+// }
+
+// func GetFormByDivision(userID int, tokenStr string) ([]models.Forms, error) {
+// 	var forms []models.Forms
+// 	// Mendapatkan division_title dari token
+// 	divisionTitle, err := GetDivisionFromToken(tokenStr)
+// 	if err != nil {
+// 		log.Print(err)
+// 		return nil, err
+// 	}
+// 	err = db.Select(&forms, "SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.user_id = $1 AND f.deleted_at IS NULL", userID)
+// 	//rows, errSelect := db.Queryx("select form_uuid, form_number, form_ticket, form_status, document_id, user_id, created_by, created_at, updated_by, updated_at from form_ms WHERE deleted_at IS NULL")
+// 	// Mendapatkan division_title dari token
+// 	var filteredForms []models.Forms
+// 	// Memfilter formulir berdasarkan division_title dari token
+// 	for _, form := range forms {
+// 		if form.DivisionTitle == divisionTitle {
+// 			filteredForms = append(filteredForms, form)
+// 		}
+// 	}
+
+//		return filteredForms, nil
+//	}
 func ShowFormById(id string) (models.Forms, error) {
 	var form models.Forms
 
 	//err := db.Get(&form, "SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.user_id, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.form_uuid = $1 AND f.deleted_at IS NULL", id)
-	err := db.Get(&form, "select form_uuid, form_number, form_ticket, form_status, document_id, user_id, created_by, created_at, updated_by, updated_at from form_ms WHERE form_uuid = $1 AND deleted_at IS NULL", id)
+	err := db.Get(&form, "SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.form_uuid = $1 AND f.deleted_at IS NULL", id)
 	if err != nil {
 		return models.Forms{}, err
 	}
@@ -110,13 +308,6 @@ func ShowFormById(id string) (models.Forms, error) {
 }
 
 func UpdateForm(updateForm models.Form, id string, isPublished bool, username string, userID int) (models.Form, error) {
-	// username, errUser := GetUsernameByID(userUUID)
-	// if errUser != nil {
-	// 	log.Print(errUser)
-	// 	return models.Document{}, errUser
-
-	// }
-
 	currentTime := time.Now()
 	formStatus := "Draft"
 	if isPublished {
@@ -126,7 +317,7 @@ func UpdateForm(updateForm models.Form, id string, isPublished bool, username st
 	var documentID int64
 	err := db.Get(&documentID, "SELECT document_id FROM document_ms WHERE document_uuid = $1", updateForm.DocumentUUID)
 	if err != nil {
-		log.Println("Error getting application_id:", err)
+		log.Println("Error getting document_id:", err)
 		return models.Form{}, err
 	}
 	_, err = db.NamedExec("UPDATE form_ms SET form_number = :form_number, form_ticket = :form_ticket, form_status = :form_status, document_id = :document_id, user_id = :user_id, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id and form_status='Draft'", map[string]interface{}{

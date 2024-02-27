@@ -21,8 +21,9 @@ type JwtCustomClaims struct {
 	UserName string `json:"user_name"`
 	UserID   int    `json:"user_id"`
 	// AppRoleId          int `json:"application_role_id"`
-	// DivisionId         int `json:"division_id"`
-	jwt.StandardClaims // Embed the StandardClaims struct
+	DivisionTitle      string `json:"division_title"`
+	DivisionCode       string `json:"division_code"`
+	jwt.StandardClaims        // Embed the StandardClaims struct
 
 }
 

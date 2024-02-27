@@ -30,7 +30,24 @@ func AddForm(c echo.Context) error {
 
 	tokenString := c.Request().Header.Get("Authorization")
 	secretKey := "secretJwToken"
+	// Mendapatkan division code dari token
+	// divisionCode, err := service.GetDivisionCode(tokenString)
+	// if err != nil {
+	// 	log.Print(err)
+	// 	// Handle error jika tidak dapat mengambil division code dari token
+	// 	return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+	// 		"message": "Failed to get division code from token",
+	// 	})
+	// }
 
+	// // Buat trigger di database dengan menggunakan division code
+	// _, err = db.Exec("CREATE TRIGGER generate_surat_trigger AFTER INSERT ON form_ms FOR EACH ROW EXECUTE FUNCTION generate_surat_number($1)", divisionCode)
+	// if err != nil {
+	// 	// Handle error jika gagal membuat trigger
+	// 	return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+	// 		"message": "Failed to create trigger",
+	// 	})
+	// }
 	if tokenString == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
 			"code":    401,
@@ -72,6 +89,7 @@ func AddForm(c echo.Context) error {
 			"status":  false,
 		})
 	}
+	divisionCode := c.Get("division_code").(string)
 	userID := c.Get("user_id").(int) // Mengambil userUUID dari konteks
 	userName := c.Get("user_name").(string)
 	addFormRequest.FormData.UserID = userID
@@ -80,6 +98,7 @@ func AddForm(c echo.Context) error {
 	fmt.Println("Token yang sudah dideskripsi:", decrypted)
 	fmt.Println("User ID:", userID)
 	fmt.Println("User Name:", userName)
+	fmt.Println("Division Code:", divisionCode)
 	// Lakukan validasi token
 	if userID == 0 && userName == "" {
 		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
@@ -103,7 +122,7 @@ func AddForm(c echo.Context) error {
 	//	addFormRequest.FormData.UserID = userID
 	if errVal == nil {
 		// Gunakan addFormRequest.IsPublished untuk menentukan apakah menyimpan sebagai draft atau mempublish
-		addroleErr := service.AddForm(addFormRequest.FormData, addFormRequest.IsPublished, userName, userID)
+		addroleErr := service.AddForm(addFormRequest.FormData, addFormRequest.IsPublished, userName, userID, divisionCode)
 		if addroleErr != nil {
 			log.Print(addroleErr)
 			return c.JSON(http.StatusInternalServerError, &models.Response{
@@ -215,6 +234,152 @@ func MyForm(c echo.Context) error {
 	return c.JSON(http.StatusOK, myform)
 }
 
+func FormByDivision(c echo.Context) error {
+	tokenString := c.Request().Header.Get("Authorization")
+	secretKey := "secretJwToken"
+
+	if tokenString == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak ditemukan!",
+			"status":  false,
+		})
+	}
+
+	// Periksa apakah tokenString mengandung "Bearer "
+	if !strings.HasPrefix(tokenString, "Bearer ") {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	// Hapus "Bearer " dari tokenString
+	tokenOnly := strings.TrimPrefix(tokenString, "Bearer ")
+
+	//dekripsi token JWE
+	decrypted, err := DecryptJWE(tokenOnly, secretKey)
+	if err != nil {
+		fmt.Println("Gagal mendekripsi token:", err)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	var claims JwtCustomClaims
+	errJ := json.Unmarshal([]byte(decrypted), &claims)
+	if errJ != nil {
+		fmt.Println("Gagal mengurai klaim:", errJ)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+	userID := c.Get("user_id").(int)
+	divisionCode := c.Get("division_code").(string)
+
+	fmt.Println("User ID :", userID)
+	fmt.Println("Division Code :", divisionCode)
+
+	myform, err := service.FormByDivision(divisionCode)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Print(err)
+			response := models.Response{
+				Code:    404,
+				Message: "Form tidak ditemukan!",
+				Status:  false,
+			}
+			return c.JSON(http.StatusNotFound, response)
+		} else {
+			log.Print(err)
+			return c.JSON(http.StatusInternalServerError, &models.Response{
+				Code:    500,
+				Message: "Terjadi kesalahan internal pada server. Mohon coba beberapa saat lagi!",
+				Status:  false,
+			})
+		}
+	}
+	return c.JSON(http.StatusOK, myform)
+}
+
+// func GetDivisionFromToken(c echo.Context) error {
+// 	tokenString := c.Request().Header.Get("Authorization")
+// 	secretKey := "secretJwToken"
+
+// 	if tokenString == "" {
+// 		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+// 			"code":    401,
+// 			"message": "Token tidak ditemukan!",
+// 			"status":  false,
+// 		})
+// 	}
+
+// 	// Periksa apakah tokenString mengandung "Bearer "
+// 	if !strings.HasPrefix(tokenString, "Bearer ") {
+// 		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+// 			"code":    401,
+// 			"message": "Token tidak valid!",
+// 			"status":  false,
+// 		})
+// 	}
+
+// 	// Hapus "Bearer " dari tokenString
+// 	tokenOnly := strings.TrimPrefix(tokenString, "Bearer ")
+
+// 	//dekripsi token JWE
+// 	decrypted, err := DecryptJWE(tokenOnly, secretKey)
+// 	if err != nil {
+// 		fmt.Println("Gagal mendekripsi token:", err)
+// 		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+// 			"code":    401,
+// 			"message": "Token tidak valid!",
+// 			"status":  false,
+// 		})
+// 	}
+
+// 	var claims JwtCustomClaims
+// 	errJ := json.Unmarshal([]byte(decrypted), &claims)
+// 	if errJ != nil {
+// 		fmt.Println("Gagal mengurai klaim:", errJ)
+// 		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+// 			"code":    401,
+// 			"message": "Token tidak valid!",
+// 			"status":  false,
+// 		})
+// 	}
+// 	userID := c.Get("user_id").(int)
+
+// 	fmt.Println("User ID :", userID)
+
+// 	divisionTitle := c.Get("division_title").(string)
+
+// 	myform, err := service.GetFormByDivision(userID, divisionTitle)
+// 	if err != nil {
+// 		if err == sql.ErrNoRows {
+// 			log.Print(err)
+// 			response := models.Response{
+// 				Code:    404,
+// 				Message: "Form tidak ditemukan!",
+// 				Status:  false,
+// 			}
+// 			return c.JSON(http.StatusNotFound, response)
+// 		} else {
+// 			log.Print(err)
+// 			return c.JSON(http.StatusInternalServerError, &models.Response{
+// 				Code:    500,
+// 				Message: "Terjadi kesalahan internal pada server. Mohon coba beberapa saat lagi!",
+// 				Status:  false,
+// 			})
+// 		}
+// 	}
+// 	return c.JSON(http.StatusOK, myform)
+// }
+
 func ShowFormById(c echo.Context) error {
 	id := c.Param("id")
 
@@ -303,9 +468,33 @@ func UpdateForm(c echo.Context) error {
 			"status":  false,
 		})
 	}
-	userID := c.Get("user_id").(int) // Mengambil userUUID dari konteks
-	userName := c.Get("user_name").(string)
+	var userID int
+	var userName string
+	if claims, ok := c.Get("user_id").(int); ok {
+		userID = claims
+	} else {
+		// Jika gagal mengonversi ke int, tangani kesalahan di sini
+		log.Println("Tidak dapat mengonversi user_id ke int")
+		return c.JSON(http.StatusBadRequest, &models.Response{
+			Code:    400,
+			Message: "Data tidak valid!",
+			Status:  false,
+		})
+	}
 
+	if name, ok := c.Get("user_name").(string); ok {
+		userName = name
+	} else {
+		// Jika gagal mendapatkan nama pengguna, tangani kesalahan di sini
+		log.Println("Tidak dapat mengonversi user_name ke string")
+		return c.JSON(http.StatusBadRequest, &models.Response{
+			Code:    400,
+			Message: "Data tidak valid!",
+			Status:  false,
+		})
+	}
+
+	//updateFormRequest.FormData.UserID = userID
 	updateFormRequest.FormData.UserID = userID
 
 	var updatedBy sql.NullString
@@ -361,6 +550,7 @@ func UpdateForm(c echo.Context) error {
 
 	previousContent, errGet := service.ShowFormById(id)
 	if errGet != nil {
+		log.Print(errGet)
 		return c.JSON(http.StatusNotFound, &models.Response{
 			Code:    404,
 			Message: "Gagal mengupdate formulir. Formulir tidak ditemukan!",
