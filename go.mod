@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/SporkHubr/echo-http-cache v0.0.0-20200706100054-1d7ae9f38029 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/dvsekhvalnov/jose2go v1.6.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect

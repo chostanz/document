@@ -88,8 +88,67 @@ func convertToRoman(num int) (string, error) {
 
 	return result.String(), nil
 }
-func generateFormNumber(documentID int64, divisionCode string) (string, error) {
 
+// func generateFormNumber(documentID int64, divisionCode string) (string, error) {
+
+// 	documentCode, err := GetDocumentCode(documentID)
+// 	if err != nil {
+// 		return "", err
+// 	}
+
+// 	// Get the latest form number for the given document ID
+// 	var latestFormNumber sql.NullString
+// 	err = db.Get(&latestFormNumber, "SELECT MAX(form_number) FROM form_ms WHERE document_id = $1", documentID)
+// 	if err != nil {
+// 		log.Println("Error getting latest form number:", err)
+// 		return "", err
+// 	}
+
+// 	// Initialize formNumber to 1 if latestFormNumber is NULL
+// 	formNumber := 1
+// 	if latestFormNumber.Valid {
+// 		// Parse the latest form number
+// 		var latestFormNumberInt int
+// 		_, err := fmt.Sscanf(latestFormNumber.String, "%d", &latestFormNumberInt)
+// 		if err != nil {
+// 			log.Println("Error parsing latest form number:", err)
+// 			return "", err
+// 		}
+// 		// Increment the latest form number
+// 		formNumber = latestFormNumberInt + 1
+// 	}
+
+// 	// Get current year and month
+// 	year := time.Now().Year()
+// 	month := time.Now().Month()
+
+// 	// Convert month to Roman numeral
+// 	romanMonth, err := convertToRoman(int(month))
+// 	if err != nil {
+// 		log.Println("Error converting month to Roman numeral:", err)
+// 		return "", err
+// 	}
+
+// 	// Format the form number according to the specified format
+// 	formNumberString := fmt.Sprintf("%04d", formNumber)
+// 	formNumberWithDivision := fmt.Sprintf("%s/%s/%s/%s/%d", formNumberString, divisionCode, documentCode, romanMonth, year)
+
+// 	// Check if the generated form number already exists, if yes, recursively call the function again
+// 	var count int
+// 	err = db.Get(&count, "SELECT COUNT(*) FROM form_ms WHERE form_number = $1", formNumberWithDivision)
+// 	if err != nil {
+// 		log.Println("Error checking existing form number:", err)
+// 		return "", err
+// 	}
+// 	if count > 0 {
+// 		// If the form number already exists, recursively call the function again
+// 		return generateFormNumber(documentID, divisionCode)
+// 	}
+
+// 	return formNumberWithDivision, nil
+// }
+
+func generateFormNumber(documentID int64, divisionCode string) (string, error) {
 	documentCode, err := GetDocumentCode(documentID)
 	if err != nil {
 		return "", err
@@ -316,6 +375,15 @@ func GetPreviousDocumentID(formUUID string) (int64, error) {
 	return previousDocumentID, nil
 }
 
+func GetFormNumber(formUUID string) (string, error) {
+	var formNumber string
+	err := db.Get(&formNumber, "SELECT form_number FROM form_ms WHERE form_uuid = $1", formUUID)
+	if err != nil {
+		return "", err
+	}
+	return formNumber, nil
+}
+
 func UpdateForm(updateForm models.Form, id string, isPublished bool, username string, userID int, divisionCode string) (models.Form, error) {
 	currentTime := time.Now()
 	formStatus := "Draft"
@@ -345,22 +413,19 @@ func UpdateForm(updateForm models.Form, id string, isPublished bool, username st
 
 	var formNumber string
 	if documentID != previousDocumentID {
-		// Jika document_id berbeda, kita perlu menghasilkan form_number baru
+		// Jika documentID berbeda dengan previousDocumentID, maka kita perlu menghasilkan form_number baru
 		formNumber, err = generateFormNumber(documentID, divisionCode)
 		if err != nil {
 			log.Println("Error generating form number:", err)
 			return models.Form{}, err
 		}
 	} else {
-		// Jika document_id sama, kita gunakan form_number yang sudah ada dari database
-		var existingFormNumber string
-		err := db.Get(&existingFormNumber, "SELECT form_number FROM form_ms WHERE form_uuid = $1", id)
+		// Jika documentID sama dengan previousDocumentID, kita perlu mengambil form_number dari form sebelumnya
+		formNumber, err = GetFormNumber(id)
 		if err != nil {
-			log.Println("Error getting existing form number:", err)
+			log.Println("Error getting form number:", err)
 			return models.Form{}, err
 		}
-		log.Print("Existing number:", existingFormNumber)
-		formNumber = existingFormNumber
 	}
 
 	_, err = db.NamedExec("UPDATE form_ms SET form_number = :form_number, form_ticket = :form_ticket, form_status = :form_status, document_id = :document_id, user_id = :user_id, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id and form_status='Draft'", map[string]interface{}{
