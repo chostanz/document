@@ -15,6 +15,8 @@ import (
 )
 
 func AddForm(c echo.Context) error {
+	const maxRecursionCount = 1000
+	recursionCount := 0 // Set nilai awal untuk recursionCount
 	var addFormRequest struct {
 		IsPublished bool        `json:"isPublished"`
 		FormData    models.Form `json:"formData"`
@@ -122,7 +124,7 @@ func AddForm(c echo.Context) error {
 	//	addFormRequest.FormData.UserID = userID
 	if errVal == nil {
 		// Gunakan addFormRequest.IsPublished untuk menentukan apakah menyimpan sebagai draft atau mempublish
-		addroleErr := service.AddForm(addFormRequest.FormData, addFormRequest.IsPublished, userName, userID, divisionCode)
+		addroleErr := service.AddForm(addFormRequest.FormData, addFormRequest.IsPublished, userName, userID, divisionCode, recursionCount)
 		if addroleErr != nil {
 			log.Print(addroleErr)
 			return c.JSON(http.StatusInternalServerError, &models.Response{
@@ -409,6 +411,9 @@ func ShowFormById(c echo.Context) error {
 }
 
 func UpdateForm(c echo.Context) error {
+
+	const maxRecursionCount = 1000
+	recursionCount := 0 // Set nilai awal untuk recursionCount
 	id := c.Param("id")
 	var updateFormRequest struct {
 		IsPublished bool        `json:"isPublished"`
@@ -568,7 +573,7 @@ func UpdateForm(c echo.Context) error {
 		})
 	}
 
-	_, errService := service.UpdateForm(updateFormRequest.FormData, id, updateFormRequest.IsPublished, userName, userID, divisionCode)
+	_, errService := service.UpdateForm(updateFormRequest.FormData, id, updateFormRequest.IsPublished, userName, userID, divisionCode, recursionCount)
 	if errService != nil {
 		log.Println("Kesalahan selama pembaruan:", errService)
 		return c.JSON(http.StatusInternalServerError, &models.Response{

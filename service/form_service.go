@@ -88,20 +88,25 @@ func convertToRoman(num int) (string, error) {
 
 	return result.String(), nil
 }
+func generateFormNumber(documentID int64, divisionCode string, recursionCount int) (string, error) {
+	const maxRecursionCount = 1000
 
-func generateFormNumber(documentID int64, divisionCode string) (string, error) {
+	// Check if the maximum recursion count is reached
+	if recursionCount > maxRecursionCount {
+		return "", errors.New("Maximum recursion count exceeded")
+	}
 
+	// Get document code
 	documentCode, err := GetDocumentCode(documentID)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Failed to get document code: %v", err)
 	}
 
 	// Get the latest form number for the given document ID
 	var latestFormNumber sql.NullString
 	err = db.Get(&latestFormNumber, "SELECT MAX(form_number) FROM form_ms WHERE document_id = $1", documentID)
 	if err != nil {
-		log.Println("Error getting latest form number:", err)
-		return "", err
+		return "", fmt.Errorf("Error getting latest form number: %v", err)
 	}
 
 	// Initialize formNumber to 1 if latestFormNumber is NULL
@@ -111,8 +116,7 @@ func generateFormNumber(documentID int64, divisionCode string) (string, error) {
 		var latestFormNumberInt int
 		_, err := fmt.Sscanf(latestFormNumber.String, "%d", &latestFormNumberInt)
 		if err != nil {
-			log.Println("Error parsing latest form number:", err)
-			return "", err
+			return "", fmt.Errorf("Error parsing latest form number: %v", err)
 		}
 		// Increment the latest form number
 		formNumber = latestFormNumberInt + 1
@@ -125,24 +129,21 @@ func generateFormNumber(documentID int64, divisionCode string) (string, error) {
 	// Convert month to Roman numeral
 	romanMonth, err := convertToRoman(int(month))
 	if err != nil {
-		log.Println("Error converting month to Roman numeral:", err)
-		return "", err
+		return "", fmt.Errorf("Error converting month to Roman numeral: %v", err)
 	}
 
 	// Format the form number according to the specified format
 	formNumberString := fmt.Sprintf("%04d", formNumber)
 	formNumberWithDivision := fmt.Sprintf("%s/%s/%s/%s/%d", formNumberString, divisionCode, documentCode, romanMonth, year)
 
-	// Check if the generated form number already exists, if yes, recursively call the function again
 	var count int
-	err = db.Get(&count, "SELECT COUNT(*) FROM form_ms WHERE form_number = $1", formNumberWithDivision)
+	err = db.Get(&count, "SELECT COUNT(*) FROM form_ms WHERE form_number = $1", formNumberString)
 	if err != nil {
-		log.Println("Error checking existing form number:", err)
-		return "", err
+		return "", fmt.Errorf("Error checking existing form number: %v", err)
 	}
 	if count > 0 {
 		// If the form number already exists, recursively call the function again
-		return generateFormNumber(documentID, divisionCode)
+		return generateFormNumber(documentID, divisionCode, recursionCount+1)
 	}
 
 	return formNumberWithDivision, nil
@@ -191,7 +192,7 @@ func generateFormNumber(documentID int64, divisionCode string) (string, error) {
 // 	return fmt.Sprintf("%04d/%s/%s/%s/%d", formNumber, divisionCode, documentCode, romanMonth, year), nil
 // }
 
-func AddForm(addFrom models.Form, isPublished bool, username string, userID int, divisionCode string) error {
+func AddForm(addFrom models.Form, isPublished bool, username string, userID int, divisionCode string, recursionCount int) error {
 
 	var documentCode string
 	currentTimestamp := time.Now().UnixNano() / int64(time.Microsecond)
@@ -220,7 +221,7 @@ func AddForm(addFrom models.Form, isPublished bool, username string, userID int,
 	}
 
 	// Generate form number based on document code
-	formNumber, err := generateFormNumber(documentID, divisionCode)
+	formNumber, err := generateFormNumber(documentID, divisionCode, recursionCount+1)
 	if err != nil {
 		// Handle error
 		log.Println("Error generating form number:", err)
@@ -384,7 +385,7 @@ func GetFormNumber(formUUID string) (string, error) {
 	return formNumber, nil
 }
 
-func UpdateForm(updateForm models.Form, id string, isPublished bool, username string, userID int, divisionCode string) (models.Form, error) {
+func UpdateForm(updateForm models.Form, id string, isPublished bool, username string, userID int, divisionCode string, recursionCount int) (models.Form, error) {
 	currentTime := time.Now()
 	formStatus := "Draft"
 	if isPublished {
@@ -414,7 +415,7 @@ func UpdateForm(updateForm models.Form, id string, isPublished bool, username st
 	var formNumber string
 	if documentID != previousDocumentID {
 		// Jika documentID berbeda dengan previousDocumentID, maka kita perlu menghasilkan form_number baru
-		formNumber, err = generateFormNumber(documentID, divisionCode)
+		formNumber, err = generateFormNumber(documentID, divisionCode, recursionCount+1)
 		if err != nil {
 			log.Println("Error generating form number:", err)
 			return models.Form{}, err
