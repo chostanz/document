@@ -60,7 +60,7 @@ func Route() *echo.Echo {
 
 	adminGroup := e.Group("/admin")
 	adminGroup.Use(middleware.AdminMemberMiddleware)
-	adminMember.GET("/my/form/division", controller.FormByDivision)
+	adminGroup.GET("/my/form/division", controller.FormByDivision)
 
 	return e
 }
