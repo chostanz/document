@@ -40,10 +40,12 @@ func Route() *echo.Echo {
 		}
 	})
 	superAdmin := e.Group("/superadmin")
-	e.Use(middleware.SuperAdminMiddleware)
+	superAdmin.Use(middleware.SuperAdminMiddleware)
 
-	superAdminGroup := e.Group("/api")
-	e.Use(middleware.AdminMemberMiddleware)
+	adminMember := e.Group("/api")
+	adminMember.Use(middleware.AdminMemberMiddleware)
+
+	adminMember.PUT("/form/update/:id", controller.UpdateForm)
 
 	e.GET("/document", controller.GetAllDoc)
 	e.GET("/document/:id", controller.ShowDocById)
@@ -52,14 +54,13 @@ func Route() *echo.Echo {
 
 	e.GET("/form", controller.GetAllForm)
 	e.GET("/form/:id", controller.ShowFormById)
-	superAdminGroup.POST("/form/add", controller.AddForm)
-	superAdminGroup.PUT("/form/update/:id", controller.UpdateForm)
+	adminMember.POST("/form/add", controller.AddForm)
 
-	superAdminGroup.GET("/my/form", controller.MyForm)
+	adminMember.GET("/my/form", controller.MyForm)
 
 	adminGroup := e.Group("/admin")
-	e.Use(middleware.AdminMemberMiddleware)
-	adminGroup.GET("/my/form/division", controller.FormByDivision)
+	adminGroup.Use(middleware.AdminMemberMiddleware)
+	adminMember.GET("/my/form/division", controller.FormByDivision)
 
 	return e
 }

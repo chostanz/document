@@ -163,6 +163,7 @@ func SuperAdminMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		c.Set("role_code", roleCode)
 
 		if roleCode != "SA" {
+			log.Print(err)
 			return c.JSON(http.StatusForbidden, &models.Response{
 				Code:    403,
 				Message: "Akses ditolak!",
@@ -358,6 +359,7 @@ func AdminMemberMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		c.Set("role_code", roleCode)
 
 		if roleCode == "SA" {
+			log.Print(err)
 			// Jika role code adalah SA, kembalikan pesan Unauthorized
 			return c.JSON(http.StatusUnauthorized, map[string]interface{}{
 				"code":    401,

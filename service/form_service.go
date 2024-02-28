@@ -307,7 +307,16 @@ func ShowFormById(id string) (models.Forms, error) {
 
 }
 
-func UpdateForm(updateForm models.Form, id string, isPublished bool, username string, userID int) (models.Form, error) {
+func GetPreviousDocumentID(formUUID string) (int64, error) {
+	var previousDocumentID int64
+	err := db.Get(&previousDocumentID, "SELECT document_id FROM form_ms WHERE form_uuid = $1", formUUID)
+	if err != nil {
+		return 0, err
+	}
+	return previousDocumentID, nil
+}
+
+func UpdateForm(updateForm models.Form, id string, isPublished bool, username string, userID int, divisionCode string) (models.Form, error) {
 	currentTime := time.Now()
 	formStatus := "Draft"
 	if isPublished {
@@ -320,8 +329,42 @@ func UpdateForm(updateForm models.Form, id string, isPublished bool, username st
 		log.Println("Error getting document_id:", err)
 		return models.Form{}, err
 	}
+
+	var documentCode string
+	err = db.Get(&documentCode, "SELECT document_code FROM document_ms WHERE document_uuid = $1", updateForm.DocumentUUID)
+	if err != nil {
+		log.Println("Error getting document code:", err)
+		return models.Form{}, err
+	}
+
+	previousDocumentID, err := GetPreviousDocumentID(id)
+	if err != nil {
+		log.Println("Error getting previous document ID:", err)
+		return models.Form{}, err
+	}
+
+	var formNumber string
+	if documentID != previousDocumentID {
+		// Jika document_id berbeda, kita perlu menghasilkan form_number baru
+		formNumber, err = generateFormNumber(documentID, divisionCode)
+		if err != nil {
+			log.Println("Error generating form number:", err)
+			return models.Form{}, err
+		}
+	} else {
+		// Jika document_id sama, kita gunakan form_number yang sudah ada dari database
+		var existingFormNumber string
+		err := db.Get(&existingFormNumber, "SELECT form_number FROM form_ms WHERE form_uuid = $1", id)
+		if err != nil {
+			log.Println("Error getting existing form number:", err)
+			return models.Form{}, err
+		}
+		log.Print("Existing number:", existingFormNumber)
+		formNumber = existingFormNumber
+	}
+
 	_, err = db.NamedExec("UPDATE form_ms SET form_number = :form_number, form_ticket = :form_ticket, form_status = :form_status, document_id = :document_id, user_id = :user_id, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id and form_status='Draft'", map[string]interface{}{
-		"form_number": updateForm.FormNumber,
+		"form_number": formNumber,
 		"form_ticket": updateForm.FormTicket,
 		"form_status": formStatus,
 		"document_id": documentID,

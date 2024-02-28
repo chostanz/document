@@ -495,6 +495,8 @@ func UpdateForm(c echo.Context) error {
 	}
 
 	//updateFormRequest.FormData.UserID = userID
+
+	divisionCode := c.Get("division_code").(string)
 	updateFormRequest.FormData.UserID = userID
 
 	var updatedBy sql.NullString
@@ -511,6 +513,7 @@ func UpdateForm(c echo.Context) error {
 	fmt.Println("Token yang sudah dideskripsi:", decrypted)
 	fmt.Println("User ID:", userID)
 	fmt.Println("user name: ", userName)
+	fmt.Println("division code:", divisionCode)
 
 	// Lakukan validasi token
 	if userID == 0 && userName == "" {
@@ -565,7 +568,7 @@ func UpdateForm(c echo.Context) error {
 		})
 	}
 
-	_, errService := service.UpdateForm(updateFormRequest.FormData, id, updateFormRequest.IsPublished, userName, userID)
+	_, errService := service.UpdateForm(updateFormRequest.FormData, id, updateFormRequest.IsPublished, userName, userID, divisionCode)
 	if errService != nil {
 		log.Println("Kesalahan selama pembaruan:", errService)
 		return c.JSON(http.StatusInternalServerError, &models.Response{
