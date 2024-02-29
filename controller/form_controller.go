@@ -30,6 +30,8 @@ func AddForm(c echo.Context) error {
 		})
 	}
 
+	fmt.Println("Nilai isPublished yang diterima di backend:", addFormRequest.IsPublished)
+
 	tokenString := c.Request().Header.Get("Authorization")
 	secretKey := "secretJwToken"
 	// Mendapatkan division code dari token
