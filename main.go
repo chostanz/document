@@ -3,10 +3,7 @@ package main
 import (
 	"document/routes"
 	"document/utils"
-	"time"
 
-	cache "github.com/SporkHubr/echo-http-cache"
-	"github.com/SporkHubr/echo-http-cache/adapter/memory"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -14,27 +11,27 @@ import (
 func main() {
 	e := routes.Route()
 
-	// Inisialisasi adapter memory
-	memcached, err := memory.NewAdapter(
-		memory.AdapterWithAlgorithm(memory.LRU),
-		memory.AdapterWithCapacity(10000000),
-	)
-	if err != nil {
-		e.Logger.Fatal(err)
-	}
+	// // Inisialisasi adapter memory
+	// memcached, err := memory.NewAdapter(
+	// 	memory.AdapterWithAlgorithm(memory.LRU),
+	// 	memory.AdapterWithCapacity(10000000),
+	// )
+	// if err != nil {
+	// 	e.Logger.Fatal(err)
+	// }
 
-	// Inisialisasi client caching
-	cacheClient, err := cache.NewClient(
-		cache.ClientWithAdapter(memcached),
-		cache.ClientWithTTL(10*time.Minute),
-		cache.ClientWithRefreshKey("opn"),
-	)
-	if err != nil {
-		e.Logger.Fatal(err)
-	}
+	// // Inisialisasi client caching
+	// cacheClient, err := cache.NewClient(
+	// 	cache.ClientWithAdapter(memcached),
+	// 	cache.ClientWithTTL(10*time.Minute),
+	// 	cache.ClientWithRefreshKey("opn"),
+	// )
+	// if err != nil {
+	// 	e.Logger.Fatal(err)
+	// }
 
-	// Gunakan middleware caching
-	e.Use(cacheClient.Middleware())
+	// // Gunakan middleware caching
+	// e.Use(cacheClient.Middleware())
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.CORS())

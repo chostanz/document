@@ -149,49 +149,6 @@ func generateFormNumber(documentID int64, divisionCode string, recursionCount in
 	return formNumberWithDivision, nil
 }
 
-// func generateFormNumber(documentID int64, divisionCode string) (string, error) {
-// 	documentCode, err := GetDocumentCode(documentID)
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	// Get the latest form number for the given document ID
-// 	var latestFormNumber sql.NullString
-// 	err = db.Get(&latestFormNumber, "SELECT MAX(form_number) FROM form_ms WHERE document_id = $1", documentID)
-// 	if err != nil {
-// 		log.Println("Error getting latest form number:", err)
-// 		return "", err
-// 	}
-
-// 	// Initialize formNumber to 1 if latestFormNumber is NULL
-// 	formNumber := 1
-// 	if latestFormNumber.Valid {
-// 		// Parse the latest form number
-// 		var latestFormNumberInt int
-// 		_, err := fmt.Sscanf(latestFormNumber.String, "%d", &latestFormNumberInt)
-// 		if err != nil {
-// 			log.Println("Error parsing latest form number:", err)
-// 			return "", err
-// 		}
-// 		// Increment the latest form number
-// 		formNumber = latestFormNumberInt + 1
-// 	}
-
-// 	// Get current year and month
-// 	year := time.Now().Year()
-// 	month := time.Now().Month()
-
-// 	// Convert month to Roman numeral
-// 	romanMonth, err := convertToRoman(int(month))
-// 	if err != nil {
-// 		log.Println("Error converting month to Roman numeral:", err)
-// 		return "", err
-// 	}
-
-// 	// Format the form number according to the specified format
-// 	return fmt.Sprintf("%04d/%s/%s/%s/%d", formNumber, divisionCode, documentCode, romanMonth, year), nil
-// }
-
 func AddForm(addFrom models.Form, isPublished bool, username string, userID int, divisionCode string, recursionCount int) error {
 
 	var documentCode string
