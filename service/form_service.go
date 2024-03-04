@@ -386,6 +386,17 @@ func UpdateForm(updateForm models.Form, id string, isPublished bool, username st
 		}
 	}
 
+	var existingUserID int
+	errID := db.Get(&existingUserID, "SELECT user_id FROM form_ms WHERE form_uuid = $1", id)
+	if errID != nil {
+		log.Println("Error getting user ID:", err)
+		return models.Form{}, err
+	}
+	if existingUserID != userID {
+		return models.Form{}, errors.New("You are not authorized to update this form")
+	}
+	log.Println("EXISTING USER ID : ", existingUserID)
+
 	_, err = db.NamedExec("UPDATE form_ms SET form_number = :form_number, form_ticket = :form_ticket, form_status = :form_status, document_id = :document_id, user_id = :user_id, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id and form_status='Draft'", map[string]interface{}{
 		"form_number": formNumber,
 		"form_ticket": updateForm.FormTicket,

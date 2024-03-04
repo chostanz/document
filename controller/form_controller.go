@@ -531,6 +531,13 @@ func UpdateForm(c echo.Context) error {
 		})
 	}
 
+	// if userID != updateFormRequest.FormData.UserID {
+	// 	return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+	// 		"code":    401,
+	// 		"message": "Anda tidak diizinkan untuk memperbarui formulir ini",
+	// 		"status":  false,
+	// 	})
+	// }
 	whitespace := regexp.MustCompile(`^\s`)
 	if whitespace.MatchString(updateFormRequest.FormData.FormTicket) {
 		return c.JSON(http.StatusUnprocessableEntity, &models.Response{
@@ -578,11 +585,21 @@ func UpdateForm(c echo.Context) error {
 	_, errService := service.UpdateForm(updateFormRequest.FormData, id, updateFormRequest.IsPublished, userName, userID, divisionCode, recursionCount)
 	if errService != nil {
 		log.Println("Kesalahan selama pembaruan:", errService)
-		return c.JSON(http.StatusInternalServerError, &models.Response{
-			Code:    500,
-			Message: "Terjadi kesalahan internal pada server. Mohon coba beberapa saat lagi!",
-			Status:  false,
-		})
+		if errService.Error() == "You are not authorized to update this form" {
+			// Mengirimkan respons JSON dengan pesan error khusus
+			return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+				"code":    401,
+				"message": "Anda tidak diizinkan untuk memperbarui formulir ini",
+				"status":  false,
+			})
+		} else {
+			// Mengirimkan respons JSON default untuk kesalahan internal server
+			return c.JSON(http.StatusInternalServerError, &models.Response{
+				Code:    500,
+				Message: "Terjadi kesalahan internal pada server. Mohon coba beberapa saat lagi!",
+				Status:  false,
+			})
+		}
 	}
 
 	log.Println(previousContent)
