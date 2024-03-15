@@ -7,7 +7,7 @@ import (
 
 type Form struct {
 	UUID         string         `json:"form_uuid" db:"form_uuid"`
-	DocumentUUID string         `json:"document_uuid" db:"document_uuid" validate:"required"`
+	DocumentUUID string         `json:"document_uuid" db:"document_uuid"`
 	DocumentID   int64          `json:"document_id" db:"document_id"`
 	UserID       int            `json:"user_id" db:"user_id" validate:"required"`
 	FormName     string         `json:"form_name" db:"form_name" validate:"required"`
