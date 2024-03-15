@@ -68,5 +68,12 @@ func Route() *echo.Echo {
 	e.GET("/product/:id", controller.ShowProductById)
 	superAdmin.POST("/product/add", controller.AddProduct)
 	superAdmin.PUT("/product/update/:id", controller.UpdateProdcut)
+
+	//project
+	e.GET("/project", controller.GetAllProject)
+	e.GET("/project/:id", controller.ShowProjectById)
+	superAdmin.POST("/project/add", controller.AddProject)
+	superAdmin.PUT("/project/update/:id", controller.UpdateProject)
+
 	return e
 }

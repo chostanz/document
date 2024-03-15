@@ -106,8 +106,8 @@ func AddProduct(c echo.Context) error {
 	errVal := c.Validate(&addProduct)
 
 	if errVal == nil {
-		var existingDocumentID int
-		err := db.QueryRow("SELECT product_id FROM product_ms WHERE product_name = $1 AND deleted_at IS NULL", addProduct.ProductName).Scan(&existingDocumentID)
+		var existingProductID int
+		err := db.QueryRow("SELECT product_id FROM product_ms WHERE product_name = $1 AND deleted_at IS NULL", addProduct.ProductName).Scan(&existingProductID)
 
 		if err == nil {
 			return c.JSON(http.StatusBadRequest, &models.Response{
@@ -295,7 +295,7 @@ func UpdateProdcut(c echo.Context) error {
 	if err == nil {
 		exsitingProName, err := service.GetProductName(id)
 		if err != nil {
-			log.Printf("Error getting existing document data: %v", err)
+			log.Printf("Error getting existing product data: %v", err)
 			return c.JSON(http.StatusInternalServerError, &models.Response{
 				Code:    500,
 				Message: "Terjadi kesalahan internal pada server.",
@@ -308,7 +308,7 @@ func UpdateProdcut(c echo.Context) error {
 			if err == nil && strconv.Itoa(existingDocID) != id {
 				return c.JSON(http.StatusBadRequest, &models.Response{
 					Code:    400,
-					Message: "Product dengan name tersebut sudah ada! Document tidak boleh sama!",
+					Message: "Product dengan name tersebut sudah ada! Product tidak boleh sama!",
 					Status:  false,
 				})
 			}

@@ -37,8 +37,8 @@ type Forms struct {
 	Deleted_at   sql.NullTime   `json:"deleted_at" db:"deleted_at"`
 }
 
-type FormName struct {
-	UUID string `json:"document_uuid" db:"document_uuid"`
-	Code string `json:"document_code" db:"document_code"`
-	Name string `json:"document_name" db:"document_name"`
-}
+// type FormName struct {
+// 	UUID string `json:"document_uuid" db:"document_uuid"`
+// 	Code string `json:"document_code" db:"document_code"`
+// 	Name string `json:"document_name" db:"document_name"`
+// }
