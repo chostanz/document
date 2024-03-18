@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"database/sql"
 	"document/models"
 	"document/service"
 	"encoding/json"
@@ -13,19 +14,29 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func AddITCM(c echo.Context) error {
+func AddDA(c echo.Context) error {
 	const maxRecursionCount = 1000
 	recursionCount := 0 // Set nilai awal untuk recursionCount
 	var addFormRequest struct {
-		IsPublished bool         `json:"isPublished"`
-		FormData    models.Form  `json:"formData"`
-		ITCM        service.ITCM `json:"itcm"` // Tambahkan ITCM ke dalam struct request
+		IsPublished bool                  `json:"isPublished"`
+		FormData    models.Form           `json:"formData"`
+		DA          service.DampakAnalisa `json:"data_da"` // Tambahkan ITCM ke dalam struct request
+		Signatory   []models.Signatory    `json:"signatories"`
 	}
 
 	if err := c.Bind(&addFormRequest); err != nil {
+		log.Print(err)
 		return c.JSON(http.StatusBadRequest, &models.Response{
 			Code:    400,
 			Message: "Data tidak valid!",
+			Status:  false,
+		})
+	}
+
+	if len(addFormRequest.Signatory) == 0 || addFormRequest.DA == (service.DampakAnalisa{}) {
+		return c.JSON(http.StatusBadRequest, &models.Response{
+			Code:    400,
+			Message: "Data boleh kosong!",
 			Status:  false,
 		})
 	}
@@ -81,6 +92,8 @@ func AddITCM(c echo.Context) error {
 	userName := c.Get("user_name").(string)
 	addFormRequest.FormData.UserID = userID
 	addFormRequest.FormData.Created_by = userName
+	// addFormRequest.FormData.isProject = false
+	// addFormRequest.FormData.projectCode =
 	// Token yang sudah dideskripsi
 	fmt.Println("Token yang sudah dideskripsi:", decrypted)
 	fmt.Println("User ID:", userID)
@@ -109,7 +122,8 @@ func AddITCM(c echo.Context) error {
 	//	addFormRequest.FormData.UserID = userID
 	if errVal == nil {
 		// Gunakan addFormRequest.IsPublished untuk menentukan apakah menyimpan sebagai draft atau mempublish
-		addroleErr := service.AddITCM(addFormRequest.FormData, addFormRequest.ITCM, addFormRequest.IsPublished, userID, userName, divisionCode, recursionCount)
+		addroleErr := service.AddDA(addFormRequest.FormData, addFormRequest.IsPublished, userName, userID, divisionCode, recursionCount, addFormRequest.DA, addFormRequest.Signatory)
+
 		if addroleErr != nil {
 			log.Print(addroleErr)
 			return c.JSON(http.StatusInternalServerError, &models.Response{
@@ -133,4 +147,103 @@ func AddITCM(c echo.Context) error {
 			Status:  false,
 		})
 	}
+}
+
+func GetAllFormDA(c echo.Context) error {
+	form, err := service.GetAllFormDA()
+	if err != nil {
+		log.Print(err)
+		response := models.Response{
+			Code:    500,
+			Message: "Terjadi kesalahan internal server. Mohon coba beberapa saat lagi",
+			Status:  false,
+		}
+		return c.JSON(http.StatusInternalServerError, response)
+	}
+	return c.JSON(http.StatusOK, form)
+
+}
+
+func GetSpecDA(c echo.Context) error {
+	id := c.Param("id")
+
+	var getDoc service.Forms
+
+	getDoc, err := service.GetSpecDA(id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Print(err)
+			response := models.Response{
+				Code:    404,
+				Message: "Formulir DA tidak ditemukan!",
+				Status:  false,
+			}
+			return c.JSON(http.StatusNotFound, response)
+		} else {
+			log.Print(err)
+			return c.JSON(http.StatusInternalServerError, &models.Response{
+				Code:    500,
+				Message: "Terjadi kesalahan internal pada server. Mohon coba beberapa saat lagi!",
+				Status:  false,
+			})
+		}
+	}
+
+	return c.JSON(http.StatusOK, getDoc)
+}
+
+func GetSignatureForm(c echo.Context) error {
+	id := c.Param("id")
+
+	var getAppRole []models.Signatories
+
+	getAppRole, err := service.GetSignatureForm(id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Print(err)
+			response := models.Response{
+				Code:    404,
+				Message: "Signatory tidak ditemukan!",
+				Status:  false,
+			}
+			return c.JSON(http.StatusNotFound, response)
+		} else {
+			log.Print(err)
+			return c.JSON(http.StatusInternalServerError, &models.Response{
+				Code:    500,
+				Message: "Terjadi kesalahan internal pada server. Mohon coba beberapa saat lagi!",
+				Status:  false,
+			})
+		}
+	}
+
+	return c.JSON(http.StatusOK, getAppRole)
+}
+
+func GetSpecSignatureByID(c echo.Context) error {
+	id := c.Param("id")
+
+	var getAppRole models.Signatorie
+
+	getAppRole, err := service.GetSpecSignatureByID(id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Print(err)
+			response := models.Response{
+				Code:    404,
+				Message: "Signatory tidak ditemukan!",
+				Status:  false,
+			}
+			return c.JSON(http.StatusNotFound, response)
+		} else {
+			log.Print(err)
+			return c.JSON(http.StatusInternalServerError, &models.Response{
+				Code:    500,
+				Message: "Terjadi kesalahan internal pada server. Mohon coba beberapa saat lagi!",
+				Status:  false,
+			})
+		}
+	}
+
+	return c.JSON(http.StatusOK, getAppRole)
 }

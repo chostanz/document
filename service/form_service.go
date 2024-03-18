@@ -60,6 +60,15 @@ func GetDocumentCode(documentID int64) (string, error) {
 	}
 	return documentCode, nil
 }
+
+func GetProjectCode(projectID int64) (string, error) {
+	var projectCode string
+	err := db.Get(&projectCode, "SELECT project_code FROM project_ms WHERE project_uuid = $1", projectID)
+	if err != nil {
+		return "", fmt.Errorf("Failed to get project ID: %v", err)
+	}
+	return projectCode, nil
+}
 func convertToRoman(num int) (string, error) {
 	if num < 1 || num > 12 {
 		return "", errors.New("Month out of range")
@@ -144,6 +153,72 @@ func generateFormNumber(documentID int64, divisionCode string, recursionCount in
 	if count > 0 {
 		// If the form number already exists, recursively call the function again
 		return generateFormNumber(documentID, divisionCode, recursionCount+1)
+	}
+
+	return formNumberWithDivision, nil
+}
+
+func generateProjectFormNumber(documentID int64, projectID int64, recursionCount int) (string, error) {
+	const maxRecursionCount = 1000
+
+	// Check if the maximum recursion count is reached
+	if recursionCount > maxRecursionCount {
+		return "", errors.New("Maximum recursion count exceeded")
+	}
+
+	documentCode, err := GetDocumentCode(documentID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get document code: %v", err)
+	}
+
+	// Get document code
+	projectCode, err := GetProjectCode(projectID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get document code: %v", err)
+	}
+
+	// Get the latest form number for the given document ID
+	var latestFormNumber sql.NullString
+	err = db.Get(&latestFormNumber, "SELECT MAX(form_number) FROM form_ms WHERE document_id = $1", documentID)
+	if err != nil {
+		return "", fmt.Errorf("error getting latest form number: %v", err)
+	}
+
+	// Initialize formNumber to 1 if latestFormNumber is NULL
+	formNumber := 1
+	if latestFormNumber.Valid {
+		// Parse the latest form number
+		var latestFormNumberInt int
+		_, err := fmt.Sscanf(latestFormNumber.String, "%d", &latestFormNumberInt)
+		if err != nil {
+			return "", fmt.Errorf("Error parsing latest form number: %v", err)
+		}
+		// Increment the latest form number
+		formNumber = latestFormNumberInt + 1
+	}
+
+	// Get current year and month
+	year := time.Now().Year()
+	month := time.Now().Month()
+
+	// Convert month to Roman numeral
+	romanMonth, err := convertToRoman(int(month))
+	if err != nil {
+		return "", fmt.Errorf("Error converting month to Roman numeral: %v", err)
+	}
+
+	// Format the form number according to the specified format
+	formNumberString := fmt.Sprintf("%04d", formNumber)
+	formNumberWithDivision := fmt.Sprintf("%s/%s/%s/%s/%d", formNumberString, projectCode, documentCode, romanMonth, year)
+
+	var count int
+	err = db.Get(&count, "SELECT COUNT(*) FROM form_ms WHERE form_number = $1", formNumberString)
+	if err != nil {
+		return "", fmt.Errorf("Error checking existing form number: %v", err)
+	}
+	if count > 0 {
+		// If the form number already exists, recursively call the function again
+		return generateFormNumber(documentID, projectCode, recursionCount+1)
 	}
 
 	return formNumberWithDivision, nil

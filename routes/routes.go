@@ -56,7 +56,11 @@ func Route() *echo.Echo {
 	e.GET("/form/:id", controller.ShowFormById)
 	adminMember.POST("/form/add", controller.AddForm)
 
-	adminMember.POST("/add/itcm", controller.AddITCM)
+	adminMember.POST("/add/da", controller.AddDA)
+	e.GET("/dampak/analisa", controller.GetAllFormDA)
+	e.GET("/dampak/analisa/:id", controller.GetSpecDA)
+	e.GET("/form/signatories/:id", controller.GetSignatureForm)
+	e.GET("/signatory/:id", controller.GetSpecSignatureByID)
 	adminMember.GET("/my/form", controller.MyForm)
 
 	adminGroup := e.Group("/admin")
