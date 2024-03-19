@@ -87,11 +87,11 @@ type Signatorie struct {
 }
 
 type UpdateSign struct {
-	IsSign           bool           `json:"is_sign" db:"is_sign"`
-	IsApprove        sql.NullBool   `json:"is_approve" db:"is_approve"`
-	ReasonNotApprove string         `json:"reason_not_approve" db:"reason_not_approve"`
-	Updated_by       sql.NullString `json:"updated_by" db:"updated_by"`
-	Updated_at       sql.NullTime   `json:"updated_at" db:"updated_at"`
+	IsSign           bool      `json:"is_sign" db:"is_sign" validate:"required"`
+	IsApprove        bool      `json:"is_approve" db:"is_approve"`
+	ReasonNotApprove string    `json:"reason_not_approve" db:"reason_not_approve"`
+	Updated_by       string    `json:"updated_by" db:"updated_by"`
+	Updated_at       time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // models.Form

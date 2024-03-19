@@ -210,8 +210,8 @@ func AddDA(addDA models.Form, isPublished bool, username string, userID int, div
 
 	app_id := currentTimestamp + int64(uniqueID)
 
-	uuid := uuid.New()
-	uuidString := uuid.String()
+	uuidObj := uuid.New()
+	uuidString := uuidObj.String()
 
 	formStatus := "Draft"
 	if isPublished {
@@ -270,6 +270,7 @@ func AddDA(addDA models.Form, isPublished bool, username string, userID int, div
 	}
 
 	for _, signatory := range signatories {
+		uuidString := uuid.New().String() // Gunakan uuid.New() dari paket UUID yang diimpor
 		_, err := db.NamedExec("INSERT INTO sign_form (sign_uuid, form_id, name, position, role_sign, created_by) VALUES (:sign_uuid, :form_id, :name, :position, :role_sign, :created_by)", map[string]interface{}{
 			"sign_uuid":  uuidString,
 			"form_id":    app_id,
@@ -307,6 +308,8 @@ func GetAllFormDA() ([]Forms, error) {
 			document_ms d ON f.document_id = d.document_id
 		LEFT JOIN 
 			project_ms p ON f.project_id = p.project_id
+			WHERE
+			d.document_code = 'DA' 
 	`)
 	if err != nil {
 		return nil, err
@@ -376,7 +379,7 @@ func GetSpecDA(id string) (Forms, error) {
 		document_ms d ON f.document_id = d.document_id
 	LEFT JOIN 
 		project_ms p ON f.project_id = p.project_id
-	WHERE f.form_uuid = $1
+	WHERE f.form_uuid = $1 and d.document_code = 'DA' 
 `, id)
 
 	if err != nil {
@@ -409,7 +412,7 @@ func GetSpecFormDA(id string) ([]Forms, error) {
 	LEFT JOIN 
 		project_ms p ON f.project_id = p.project_id
 		WHERE
-		f.form_uuid = $1
+		f.form_uuid = $1 and d.document_code = 'DA' 
 `)
 	if err != nil {
 		return nil, err
@@ -463,10 +466,48 @@ func GetSpecSignatureByID(id string) (models.Signatorie, error) {
 	return signatories, nil
 }
 
+func UpdateFormDA(updateDA models.Form, data DampakAnalisa, username string, userID int, isPublished bool, id string) (models.Form, error) {
+	currentTime := time.Now()
+	formStatus := "Draft"
+	if isPublished {
+		formStatus = "Published"
+	}
+
+	var projectID int64
+	err := db.Get(&projectID, "SELECT project_id FROM project_ms WHERE project_uuid = $1", updateDA.ProjectUUID)
+	if err != nil {
+		log.Println("Error getting project_id:", err)
+		return models.Form{}, err
+	}
+
+	daJSON, err := json.Marshal(data)
+	if err != nil {
+		log.Println("Error marshaling DampakAnalisa struct:", err)
+		return models.Form{}, err
+	}
+	log.Println("DampakAnalisa JSON:", string(daJSON)) // Periksa hasil marshaling
+
+	_, err = db.NamedExec("UPDATE form_ms SET user_id = :user_id, form_name = :form_name, form_ticket = :form_ticket, form_status = :form_status, form_data = :form_data, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id AND form_status = 'Draft'", map[string]interface{}{
+		"user_id":     userID,
+		"form_name":   updateDA.FormName,
+		"form_ticket": updateDA.FormTicket,
+		"project_id":  projectID,
+		"form_status": formStatus,
+		"form_data":   daJSON,
+		"updated_by":  username,
+		"updated_at":  currentTime,
+		"id":          id,
+	})
+	if err != nil {
+		return models.Form{}, err
+	}
+	return updateDA, nil
+}
+
 func UpdateFormSignature(updateSign models.UpdateSign, id string, username string) error {
 	currentTime := time.Now()
 
-	_, err := db.NamedExec("UPDATE sign_form SET is_sign = :is_sign, is_approve = :is_approve, reason_not_approve = :reason_not_approve, updated_by = :updated_by, updated_at = :updated_at, WHERE sign_uuid = :id", map[string]interface{}{
+	_, err := db.NamedExec("UPDATE sign_form SET is_sign = :is_sign, is_approve = :is_approve, reason_not_approve = :reason_not_approve, updated_by = :updated_by, updated_at = :updated_at WHERE sign_uuid = :id", map[string]interface{}{
 		"is_sign":            updateSign.IsSign,
 		"is_approve":         updateSign.IsApprove,
 		"reason_not_approve": updateSign.ReasonNotApprove,

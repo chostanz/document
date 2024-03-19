@@ -60,7 +60,9 @@ func Route() *echo.Echo {
 	e.GET("/dampak/analisa", controller.GetAllFormDA)
 	e.GET("/dampak/analisa/:id", controller.GetSpecDA)
 	e.GET("/form/signatories/:id", controller.GetSignatureForm)
+	adminMember.PUT("/dampak/analisa/update/:id", controller.UpdateFormDA)
 	e.GET("/signatory/:id", controller.GetSpecSignatureByID)
+	adminMember.PUT("/signature/update/:id", controller.UpdateSignature)
 	adminMember.GET("/my/form", controller.MyForm)
 
 	adminGroup := e.Group("/admin")
