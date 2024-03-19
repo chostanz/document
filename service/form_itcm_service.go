@@ -179,17 +179,18 @@ func AddITCM(addForm models.Form, itcm models.ITCM, isPublished bool, userID int
 	return nil
 }
 
-func GetAllFormITCM() ([]models.FormITCM, error) {
+func GetAllFormITCM() ([]models.FormsITCM, error) {
 	rows, err := db.Query(`SELECT 
     f.form_uuid, f.form_name, 
     REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
     f.form_ticket, f.form_status,
     d.document_name,
     p.project_name,
+	p.project_manager,
     f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
     (f.form_data->>'no_da')::text AS no_da,
     (f.form_data->>'nama_pemohon')::text AS nama_pemohon,
-    (f.form_data->>'intansi')::text AS intansi,
+    (f.form_data->>'instansi')::text AS instansi,
     (f.form_data->>'tanggal')::text AS tanggal,
     (f.form_data->>'perubahan_aset')::text AS perubahan_aset,
     (f.form_data->>'deskripsi')::text AS deskripsi
@@ -209,12 +210,12 @@ func GetAllFormITCM() ([]models.FormITCM, error) {
 	defer rows.Close()
 
 	// Slice to hold all form data
-	var forms []models.FormITCM
+	var forms []models.FormsITCM
 
 	// Iterate through the rows
 	for rows.Next() {
 		// Scan the row into the Forms struct
-		var form models.FormITCM
+		var form models.FormsITCM
 		err := rows.Scan(
 			&form.FormUUID,
 			&form.FormName,
@@ -223,6 +224,7 @@ func GetAllFormITCM() ([]models.FormITCM, error) {
 			&form.FormStatus,
 			&form.DocumentName,
 			&form.ProjectName,
+			&form.ProjectManager,
 			&form.CreatedBy,
 			&form.CreatedAt,
 			&form.UpdatedBy,
@@ -256,10 +258,11 @@ func GetSpecITCM(id string) (models.FormITCM, error) {
     f.form_ticket, f.form_status,
     d.document_name,
     p.project_name,
+	p.project_manager,
     f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
     (f.form_data->>'no_da')::text AS no_da,
     (f.form_data->>'nama_pemohon')::text AS nama_pemohon,
-    (f.form_data->>'intansi')::text AS intansi,
+    (f.form_data->>'instansi')::text AS instansi,
     (f.form_data->>'tanggal')::text AS tanggal,
     (f.form_data->>'perubahan_aset')::text AS perubahan_aset,
     (f.form_data->>'deskripsi')::text AS deskripsi
@@ -277,5 +280,44 @@ func GetSpecITCM(id string) (models.FormITCM, error) {
 	}
 
 	return specITCM, nil
+
+}
+
+func UpdateFormITCM(updateITCM models.Form, data models.ITCM, username string, userID int, isPublished bool, id string) (models.Form, error) {
+	currentTime := time.Now()
+	formStatus := "Draft"
+	if isPublished {
+		formStatus = "Published"
+	}
+
+	var projectID int64
+	err := db.Get(&projectID, "SELECT project_id FROM project_ms WHERE project_uuid = $1", updateITCM.ProjectUUID)
+	if err != nil {
+		log.Println("Error getting project_id:", err)
+		return models.Form{}, err
+	}
+
+	daJSON, err := json.Marshal(data)
+	if err != nil {
+		log.Println("Error marshaling DampakAnalisa struct:", err)
+		return models.Form{}, err
+	}
+	log.Println("ITCM JSON:", string(daJSON)) // Periksa hasil marshaling
+
+	_, err = db.NamedExec("UPDATE form_ms SET user_id = :user_id, form_name = :form_name, form_ticket = :form_ticket, form_status = :form_status, form_data = :form_data, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id AND form_status = 'Draft'", map[string]interface{}{
+		"user_id":     userID,
+		"form_name":   updateITCM.FormName,
+		"form_ticket": updateITCM.FormTicket,
+		"project_id":  projectID,
+		"form_status": formStatus,
+		"form_data":   daJSON,
+		"updated_by":  username,
+		"updated_at":  currentTime,
+		"id":          id,
+	})
+	if err != nil {
+		return models.Form{}, err
+	}
+	return updateITCM, nil
 
 }
