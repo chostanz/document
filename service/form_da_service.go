@@ -12,142 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type ITCM struct {
-	PerubahanAset string `json:"perubahan_aset" validate:"required"`
-	Deskripsi     string `json:"deskripsi" validate:"required"`
-}
-type DampakAnalisa struct {
-	//NamaProyek                           string    `json:"nama_proyek"`
-	NamaAnalis                           string `json:"nama_analis"`
-	Jabatan                              string `json:"jabatan"`
-	Departemen                           string `json:"departemen"`
-	JenisPerubahan                       string `json:"jenis_perubahan"`
-	DetailDampakPerubahan                string `json:"detail_dampak_perubahan"`
-	RencanaPengembanganPerubahan         string `json:"rencana_pengembangan_perubahan"`
-	RencanaPengujianPerubahanSistem      string `json:"rencana_pengujian_perubahan_sistem"`
-	RencanaRilisPerubahanDanImplementasi string `json:"rencana_rilis_perubahan_dan_implementasi"`
-}
-
-type FormWithApprovalStatus struct {
-	FormID              int64         `json:"form_id"`
-	FormUUID            string        `json:"form_uuid"`
-	FormNumber          string        `json:"form_number"`
-	FormTicket          string        `json:"form_ticket"`
-	FormStatus          string        `json:"form_status"`
-	FormData            DampakAnalisa `json:"form_data"`
-	SignatoriesName     []string      `json:"signatories_name"`
-	SignatoriesPosition []string      `json:"signatories_position"`
-	SignatoriesRole     []string      `json:"signatories_role"`
-	IsSigns             []bool        `json:"is_signs"`
-	IsApproves          []bool        `json:"is_approves"`
-	ApprovalStatus      string        `json:"approval_status"`
-}
-
-type Forms struct {
-	FormUUID                             string         `json:"form_uuid" db:"form_uuid"`
-	FormName                             string         `json:"form_name" db:"form_name"`
-	FormNumber                           string         `json:"form_number" db:"form_number"`
-	FormTicket                           string         `json:"form_ticket" db:"form_ticket"`
-	FormStatus                           string         `json:"form_status" db:"form_status"`
-	DocumentName                         string         `json:"document_name" db:"document_name"`
-	ProjectName                          string         `json:"project_name" db:"project_name"`
-	CreatedBy                            string         `json:"created_by" db:"created_by"`
-	CreatedAt                            time.Time      `json:"created_at" db:"created_at"`
-	UpdatedBy                            sql.NullString `json:"updated_by" db:"updated_by"`
-	UpdatedAt                            sql.NullTime   `json:"updated_at" db:"updated_at"`
-	DeletedBy                            sql.NullString `json:"deleted_by" db:"deleted_by"`
-	DeletedAt                            sql.NullTime   `json:"deleted_at" db:"deleted_at"`
-	NamaAnalis                           string         `json:"nama_analis" db:"nama_analis"`
-	Jabatan                              string         `json:"jabatan" db:"jabatan"`
-	Departemen                           string         `json:"departemen" db:"departemen"`
-	JenisPerubahan                       string         `json:"jenis_perubahan" db:"jenis_perubahan"`
-	DetailDampakPerubahan                string         `json:"detail_dampak_perubahan" db:"detail_dampak_perubahan"`
-	RencanaPengembanganPerubahan         string         `json:"rencana_pengembangan_perubahan" db:"rencana_pengembangan_perubahan"`
-	RencanaPengujianPerubahanSistem      string         `json:"rencana_pengujian_perubahan_sistem" db:"rencana_pengujian_perubahan_sistem"`
-	RencanaRilisPerubahanDanImplementasi string         `json:"rencana_rilis_perubahan_dan_implementasi" db:"rencana_rilis_perubahan_dan_implementasi"`
-}
-
-func AddITCM(addForm models.Form, itcm ITCM, isPublished bool, userID int, username string, divisionCode string, recursionCount int, isProject bool, projectCode string, projectUUID string) error {
-	currentTimestamp := time.Now().UnixNano() / int64(time.Microsecond)
-	uniqueID := uuid.New().ID()
-	appID := currentTimestamp + int64(uniqueID)
-	uuid := uuid.New()
-	uuidString := uuid.String()
-
-	formStatus := "Draft"
-	if isPublished {
-		formStatus = "Published"
-	}
-
-	var documentID int64
-	err := db.Get(&documentID, "SELECT document_id FROM document_ms WHERE document_uuid = $1", addForm.DocumentUUID)
-	if err != nil {
-		log.Println("Error getting document_id:", err)
-		return err
-	}
-
-	var projectID int64
-	if isProject {
-		err = db.Get(&projectID, "SELECT project_id FROM project_ms WHERE project_code = $1", projectCode)
-		if err != nil {
-			log.Println("Error getting project_id:", err)
-			return err
-		}
-	}
-
-	var documentCode string
-	err = db.Get(&documentCode, "SELECT document_code FROM document_ms WHERE document_uuid = $1", addForm.DocumentUUID)
-	if err != nil {
-		log.Println("Error getting document code:", err)
-		return err
-	}
-
-	// Generate form number based on document code
-	var formNumber string
-	if isProject {
-		// Format nomor formulir sesuai dengan proyek
-		formNumber, err = generateProjectFormNumber(documentID, projectID, recursionCount)
-		if err != nil {
-			log.Println("Error generating project form number:", err)
-			return err
-		}
-	} else {
-		// Format nomor formulir sesuai dengan divisi
-		formNumber, err = generateFormNumber(documentID, divisionCode, recursionCount+1)
-		if err != nil {
-			log.Println("Error generating division form number:", err)
-			return err
-		}
-	}
-
-	// Marshal ITCM struct to JSON
-	itcmJSON, err := json.Marshal(itcm)
-	if err != nil {
-		log.Println("Error marshaling ITCM struct:", err)
-		return err
-	}
-
-	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, project_id, form_name, form_number, form_ticket, form_status, form_data, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :project_id, :form_name, :form_number, :form_ticket, :form_status, :form_data, :created_by)", map[string]interface{}{
-		"form_id":     appID,
-		"form_uuid":   uuidString,
-		"document_id": documentID,
-		"user_id":     userID,
-		"project_id":  projectID,
-		"form_name":   addForm.FormName,
-		"form_number": formNumber,
-		"form_ticket": addForm.FormTicket,
-		"form_status": formStatus,
-		"form_data":   string(itcmJSON), // Convert JSON to string
-		"created_by":  username,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func generateFormNumberDA(documentID int64, recursionCount int) (string, error) {
 	const maxRecursionCount = 1000
 
@@ -203,7 +67,7 @@ func generateFormNumberDA(documentID int64, recursionCount int) (string, error) 
 	return formNumberWithDivision, nil
 }
 
-func AddDA(addDA models.Form, isPublished bool, username string, userID int, divisionCode string, recrusionCount int, data DampakAnalisa, signatories []models.Signatory) error {
+func AddDA(addDA models.Form, isPublished bool, username string, userID int, divisionCode string, recrusionCount int, data models.DampakAnalisa, signatories []models.Signatory) error {
 	var documentCode string
 	currentTimestamp := time.Now().UnixNano() / int64(time.Microsecond)
 	uniqueID := uuid.New().ID()
@@ -287,7 +151,7 @@ func AddDA(addDA models.Form, isPublished bool, username string, userID int, div
 
 }
 
-func GetAllFormDA() ([]Forms, error) {
+func GetAllFormDA() ([]models.Formss, error) {
 	rows, err := db.Query(`
 		SELECT 
 			f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
@@ -317,12 +181,12 @@ func GetAllFormDA() ([]Forms, error) {
 	defer rows.Close()
 
 	// Slice to hold all form data
-	var forms []Forms
+	var forms []models.Formss
 
 	// Iterate through the rows
 	for rows.Next() {
 		// Scan the row into the Forms struct
-		var form Forms
+		var form models.Formss
 		err := rows.Scan(
 			&form.FormUUID,
 			&form.FormName,
@@ -357,8 +221,8 @@ func GetAllFormDA() ([]Forms, error) {
 	return forms, nil
 }
 
-func GetSpecDA(id string) (Forms, error) {
-	var specDA Forms
+func GetSpecDA(id string) (models.Formss, error) {
+	var specDA models.Formss
 
 	err := db.Get(&specDA, `SELECT 
 		f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
@@ -383,14 +247,14 @@ func GetSpecDA(id string) (Forms, error) {
 `, id)
 
 	if err != nil {
-		return Forms{}, err
+		return models.Formss{}, err
 	}
 
 	return specDA, nil
 }
 
-func GetSpecFormDA(id string) ([]Forms, error) {
-	var signatories []Forms
+func GetSpecFormDA(id string) ([]models.Formss, error) {
+	var signatories []models.Formss
 
 	err := db.Select(&signatories, `SELECT 
 		f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
@@ -466,7 +330,7 @@ func GetSpecSignatureByID(id string) (models.Signatorie, error) {
 	return signatories, nil
 }
 
-func UpdateFormDA(updateDA models.Form, data DampakAnalisa, username string, userID int, isPublished bool, id string) (models.Form, error) {
+func UpdateFormDA(updateDA models.Form, data models.DampakAnalisa, username string, userID int, isPublished bool, id string) (models.Form, error) {
 	currentTime := time.Now()
 	formStatus := "Draft"
 	if isPublished {

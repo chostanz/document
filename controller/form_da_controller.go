@@ -18,10 +18,10 @@ func AddDA(c echo.Context) error {
 	const maxRecursionCount = 1000
 	recursionCount := 0 // Set nilai awal untuk recursionCount
 	var addFormRequest struct {
-		IsPublished bool                  `json:"isPublished"`
-		FormData    models.Form           `json:"formData"`
-		DA          service.DampakAnalisa `json:"data_da"` // Tambahkan ITCM ke dalam struct request
-		Signatory   []models.Signatory    `json:"signatories"`
+		IsPublished bool                 `json:"isPublished"`
+		FormData    models.Form          `json:"formData"`
+		DA          models.DampakAnalisa `json:"data_da"` // Tambahkan ITCM ke dalam struct request
+		Signatory   []models.Signatory   `json:"signatories"`
 	}
 
 	if err := c.Bind(&addFormRequest); err != nil {
@@ -33,7 +33,7 @@ func AddDA(c echo.Context) error {
 		})
 	}
 
-	if len(addFormRequest.Signatory) == 0 || addFormRequest.DA == (service.DampakAnalisa{}) {
+	if len(addFormRequest.Signatory) == 0 || addFormRequest.DA == (models.DampakAnalisa{}) {
 		return c.JSON(http.StatusBadRequest, &models.Response{
 			Code:    400,
 			Message: "Data boleh kosong!",
@@ -167,7 +167,7 @@ func GetAllFormDA(c echo.Context) error {
 func GetSpecDA(c echo.Context) error {
 	id := c.Param("id")
 
-	var getDoc service.Forms
+	var getDoc models.Formss
 
 	getDoc, err := service.GetSpecDA(id)
 	if err != nil {
@@ -369,9 +369,9 @@ func UpdateFormDA(c echo.Context) error {
 	id := c.Param("id")
 
 	var updateFormRequest struct {
-		IsPublished bool                  `json:"isPublished"`
-		FormData    models.Form           `json:"formData"`
-		DA          service.DampakAnalisa `json:"data_da"` // Tambahkan ITCM ke dalam struct request
+		IsPublished bool                 `json:"isPublished"`
+		FormData    models.Form          `json:"formData"`
+		DA          models.DampakAnalisa `json:"data_da"` // Tambahkan ITCM ke dalam struct request
 	}
 
 	if err := c.Bind(&updateFormRequest); err != nil {
