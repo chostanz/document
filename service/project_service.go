@@ -60,9 +60,17 @@ func ShowProjectById(id string) (models.Projects, error) {
 }
 
 func UpdateProject(updateForm models.Project, id string, username string) (models.Project, error) {
+	var productID int64
+	err := db.Get(&productID, "SELECT product_id FROM product_ms WHERE product_uuid = $1", updateForm.ProductUUID)
+	if err != nil {
+		log.Println("Error getting product_id:", err)
+		return models.Project{}, err
+	}
 	currentTimestamp := time.Now()
-	_, err := db.NamedExec("UPDATE project_ms SET project_name = :project_name, project_manager = :project_manager, updated_by = :updated_by, updated_at = :updated_at WHERE project_uuid = :id", map[string]interface{}{
+	_, err = db.NamedExec("UPDATE project_ms SET product_id = :product_id, project_name = :project_name, project_code = :project_code, project_manager = :project_manager, updated_by = :updated_by, updated_at = :updated_at WHERE project_uuid = :id", map[string]interface{}{
+		"product_id":      productID,
 		"project_name":    updateForm.ProjectName,
+		"project_code":    updateForm.ProjectCode,
 		"project_manager": updateForm.ProjectManager,
 		"updated_by":      username,
 		"updated_at":      currentTimestamp,

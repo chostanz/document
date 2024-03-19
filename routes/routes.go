@@ -65,6 +65,10 @@ func Route() *echo.Echo {
 	adminMember.PUT("/signature/update/:id", controller.UpdateSignature)
 	adminMember.GET("/my/form", controller.MyForm)
 
+	//FORM itcm
+	adminMember.POST("/add/itcm", controller.AddITCM)
+
+	//admin
 	adminGroup := e.Group("/admin")
 	adminGroup.Use(middleware.AdminMemberMiddleware)
 	adminGroup.GET("/my/form/division", controller.FormByDivision)

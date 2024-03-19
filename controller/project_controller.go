@@ -300,7 +300,7 @@ func UpdateProject(c echo.Context) error {
 	if whitespace.MatchString(editPro.ProjectManager) {
 		return c.JSON(http.StatusUnprocessableEntity, &models.Response{
 			Code:    422,
-			Message: "Format Nomor tidak boleh dimulai dengan spasi!",
+			Message: "Project Manager tidak boleh dimulai dengan spasi!",
 			Status:  false,
 		})
 	}

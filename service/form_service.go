@@ -341,53 +341,6 @@ func FormByDivision(divisionCode string) ([]models.Forms, error) {
 	return form, nil
 }
 
-// func GetDivisionFromToken(tokenStr string) (string, error) {
-// 	log.Print("token str ", tokenStr)
-// 	var claims JwtCustomClaims
-// 	if err := json.Unmarshal([]byte(tokenStr), &claims); err != nil {
-// 		return "", fmt.Errorf("Gagal mengurai klaim: %v", err)
-// 	}
-
-// 	// Mengambil nilai user_uuid dari klaim
-// 	divisionTitle := claims.DivisionTitle
-// 	log.Print("USER Division Title : ", divisionTitle)
-// 	return divisionTitle, nil
-// }
-
-// func GetDivisionFromToken(tokenStr string) (string, error) {
-// 	var claims JwtCustomClaims
-// 	// Menguraikan token JWT tanpa memeriksa tanda tangan, karena hanya divisi yang kita butuhkan.
-// 	_, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &claims)
-// 	if err != nil {
-// 		return "", fmt.Errorf("gagal mengurai klaim: %v", err)
-// 	}
-
-// 	// Mengambil division_title dari klaim
-// 	divisionTitle := claims.DivisionTitle
-// 	return divisionTitle, nil
-// }
-
-// func GetFormByDivision(userID int, tokenStr string) ([]models.Forms, error) {
-// 	var forms []models.Forms
-// 	// Mendapatkan division_title dari token
-// 	divisionTitle, err := GetDivisionFromToken(tokenStr)
-// 	if err != nil {
-// 		log.Print(err)
-// 		return nil, err
-// 	}
-// 	err = db.Select(&forms, "SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.user_id = $1 AND f.deleted_at IS NULL", userID)
-// 	//rows, errSelect := db.Queryx("select form_uuid, form_number, form_ticket, form_status, document_id, user_id, created_by, created_at, updated_by, updated_at from form_ms WHERE deleted_at IS NULL")
-// 	// Mendapatkan division_title dari token
-// 	var filteredForms []models.Forms
-// 	// Memfilter formulir berdasarkan division_title dari token
-// 	for _, form := range forms {
-// 		if form.DivisionTitle == divisionTitle {
-// 			filteredForms = append(filteredForms, form)
-// 		}
-// 	}
-
-//		return filteredForms, nil
-//	}
 func ShowFormById(id string) (models.Forms, error) {
 	var form models.Forms
 
