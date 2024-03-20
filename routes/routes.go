@@ -69,7 +69,13 @@ func Route() *echo.Echo {
 	adminMember.POST("/add/itcm", controller.AddITCM)
 	e.GET("/form/itcm", controller.GetAllFormITCM)
 	e.GET("/form/itcm/:id", controller.GetSpecITCM)
+	e.GET("/itcm/:id", controller.GetSpecAllITCM)
 	adminMember.PUT("/form/itcm/update/:id", controller.UpdateFormITCM)
+
+	//add approval
+	adminMember.PUT("/form/approval/:id", controller.AddApproval)
+	//form BA
+	adminMember.POST("/add/ba", controller.AddBA)
 
 	//admin
 	adminGroup := e.Group("/admin")

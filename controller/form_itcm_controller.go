@@ -193,6 +193,34 @@ func GetSpecITCM(c echo.Context) error {
 	return c.JSON(http.StatusOK, getDoc)
 }
 
+func GetSpecAllITCM(c echo.Context) error {
+	id := c.Param("id")
+
+	var getDoc []models.FormITCMAll
+
+	getDoc, err := service.GetSpecAllITCM(id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Print(err)
+			response := models.Response{
+				Code:    404,
+				Message: "Formulir ITCM tidak ditemukan!",
+				Status:  false,
+			}
+			return c.JSON(http.StatusNotFound, response)
+		} else {
+			log.Print(err)
+			return c.JSON(http.StatusInternalServerError, &models.Response{
+				Code:    500,
+				Message: "Terjadi kesalahan internal pada server. Mohon coba beberapa saat lagi!",
+				Status:  false,
+			})
+		}
+	}
+
+	return c.JSON(http.StatusOK, getDoc)
+}
+
 func UpdateFormITCM(c echo.Context) error {
 	id := c.Param("id")
 

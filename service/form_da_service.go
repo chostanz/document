@@ -124,7 +124,6 @@ func AddDA(addDA models.Form, isPublished bool, username string, userID int, div
 		"form_ticket": addDA.FormTicket,
 		"form_status": formStatus,
 		"form_data":   daJSON,
-		"is_project":  addDA.IsProject,
 		"project_id":  projectID,
 		"created_by":  username,
 	})
@@ -154,7 +153,7 @@ func AddDA(addDA models.Form, isPublished bool, username string, userID int, div
 func GetAllFormDA() ([]models.Formss, error) {
 	rows, err := db.Query(`
 		SELECT 
-			f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
+			f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, f.is_approved, f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
 			d.document_name,
 			p.project_name,
 			f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
@@ -166,7 +165,12 @@ func GetAllFormDA() ([]models.Formss, error) {
 			(f.form_data->>'rencana_pengembangan_perubahan')::text AS rencana_pengembangan_perubahan,
 			(f.form_data->>'rencana_pengujian_perubahan_sistem')::text AS rencana_pengujian_perubahan_sistem,
 			(f.form_data->>'rencana_rilis_perubahan_dan_implementasi')::text AS rencana_rilis_perubahan_dan_implementasi
-		FROM 
+			CASE
+			WHEN f.is_approved IS NULL THEN 'Menunggu Disetujui'
+			WHEN f.is_approved = false THEN 'Tidak Disetujui'
+			WHEN f.is_approved = true THEN 'Disetujui'
+		END AS ApprovalStatus -- Alias the CASE expression as ApprovalStatus
+			FROM 
 			form_ms f
 		LEFT JOIN 
 			document_ms d ON f.document_id = d.document_id
@@ -195,6 +199,9 @@ func GetAllFormDA() ([]models.Formss, error) {
 			&form.FormStatus,
 			&form.DocumentName,
 			&form.ProjectName,
+			&form.IsApprove,
+			&form.Reason,
+			&form.ApprovalStatus,
 			&form.CreatedBy,
 			&form.CreatedAt,
 			&form.UpdatedBy,
@@ -225,7 +232,7 @@ func GetSpecDA(id string) (models.Formss, error) {
 	var specDA models.Formss
 
 	err := db.Get(&specDA, `SELECT 
-		f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
+		f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, f.is_approved, f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
 		d.document_name,
 		p.project_name,
 		f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
@@ -236,8 +243,12 @@ func GetSpecDA(id string) (models.Formss, error) {
 		(f.form_data->>'detail_dampak_perubahan')::text AS detail_dampak_perubahan,
 		(f.form_data->>'rencana_pengembangan_perubahan')::text AS rencana_pengembangan_perubahan,
 		(f.form_data->>'rencana_pengujian_perubahan_sistem')::text AS rencana_pengujian_perubahan_sistem,
-		(f.form_data->>'rencana_rilis_perubahan_dan_implementasi')::text AS rencana_rilis_perubahan_dan_implementasi
-	FROM 
+		(f.form_data->>'rencana_rilis_perubahan_dan_implementasi')::text AS rencana_rilis_perubahan_dan_implementasi,
+		CASE
+		WHEN f.is_approved IS NULL THEN 'Menunggu Disetujui'
+		WHEN f.is_approved = false THEN 'Tidak Disetujui'
+		WHEN f.is_approved = true THEN 'Disetujui'
+		FROM 
 		form_ms f
 	LEFT JOIN 
 		document_ms d ON f.document_id = d.document_id
@@ -284,52 +295,6 @@ func GetSpecFormDA(id string) ([]models.Formss, error) {
 	return signatories, nil
 }
 
-func GetSignatureForm(id string) ([]models.Signatories, error) {
-	var signatories []models.Signatories
-
-	err := db.Select(&signatories, `SELECT 
-	sf.sign_uuid, 
-	sf.name, 
-	sf.position, 
-	sf.role_sign, 
-	sf.is_sign, 
-	sf.is_approve, 
-	sf.created_by, 
-	sf.created_at, 
-	sf.updated_by, 
-	sf.updated_at, 
-	sf.deleted_by, 
-	sf.deleted_at,
-	CASE
-		WHEN sf.is_approve IS NULL THEN 'Menunggu Disetujui'
-		WHEN sf.is_approve = false THEN 'Tidak Disetujui'
-		WHEN sf.is_approve = true THEN 'Disetujui'
-	END AS ApprovalStatus -- Alias the CASE expression as ApprovalStatus
-FROM 
-	sign_form sf 
-	JOIN form_ms fm ON sf.form_id = fm.form_id 
-WHERE 
-	fm.form_uuid = $1`, id)
-	if err != nil {
-		log.Print(err)
-		return nil, err
-	}
-
-	return signatories, nil
-
-}
-
-func GetSpecSignatureByID(id string) (models.Signatorie, error) {
-	var signatories models.Signatorie
-	err := db.Get(&signatories, "SELECT sign_uuid, name, position, role_sign, is_sign, is_approve, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at FROM sign_form sf WHERE sign_uuid = $1", id)
-	if err != nil {
-		log.Print(err)
-		return models.Signatorie{}, err
-	}
-
-	return signatories, nil
-}
-
 func UpdateFormDA(updateDA models.Form, data models.DampakAnalisa, username string, userID int, isPublished bool, id string) (models.Form, error) {
 	currentTime := time.Now()
 	formStatus := "Draft"
@@ -366,21 +331,4 @@ func UpdateFormDA(updateDA models.Form, data models.DampakAnalisa, username stri
 		return models.Form{}, err
 	}
 	return updateDA, nil
-}
-
-func UpdateFormSignature(updateSign models.UpdateSign, id string, username string) error {
-	currentTime := time.Now()
-
-	_, err := db.NamedExec("UPDATE sign_form SET is_sign = :is_sign, is_approve = :is_approve, reason_not_approve = :reason_not_approve, updated_by = :updated_by, updated_at = :updated_at WHERE sign_uuid = :id", map[string]interface{}{
-		"is_sign":            updateSign.IsSign,
-		"is_approve":         updateSign.IsApprove,
-		"reason_not_approve": updateSign.ReasonNotApprove,
-		"updated_by":         username,
-		"updated_at":         currentTime,
-		"id":                 id,
-	})
-	if err != nil {
-		return err
-	}
-	return nil
 }

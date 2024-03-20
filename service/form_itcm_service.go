@@ -96,15 +96,6 @@ func AddITCM(addForm models.Form, itcm models.ITCM, isPublished bool, userID int
 		return err
 	}
 
-	// var projectID int64
-	// if isProject {
-	// 	err = db.Get(&projectID, "SELECT project_id FROM project_ms WHERE project_code = $1", projectCode)
-	// 	if err != nil {
-	// 		log.Println("Error getting project_id:", err)
-	// 		return err
-	// 	}
-	// }
-
 	var documentCode string
 	err = db.Get(&documentCode, "SELECT document_code FROM document_ms WHERE document_uuid = $1", addForm.DocumentUUID)
 	if err != nil {
@@ -112,38 +103,19 @@ func AddITCM(addForm models.Form, itcm models.ITCM, isPublished bool, userID int
 		return err
 	}
 
-	// Generate form number based on document code
-	// var formNumber string
-	// if isProject {
-	// 	// Format nomor formulir sesuai dengan proyek
-	// 	formNumber, err = generateProjectFormNumber(documentID, projectID, recursionCount)
-	// 	if err != nil {
-	// 		log.Println("Error generating project form number:", err)
-	// 		return err
-	// 	}
-	// } else {
-	// 	// Format nomor formulir sesuai dengan divisi
-	// 	formNumber, err = generateFormNumber(documentID, divisionCode, recursionCount+1)
-	// 	if err != nil {
-	// 		log.Println("Error generating division form number:", err)
-	// 		return err
-	// 	}
-	// }
-
 	formNumber, err := generateFormNumberITCM(documentID, divisionCode, recursionCount+1)
 	if err != nil {
 		log.Println("Error generating project form number:", err)
 		return err
 	}
 
-	// Marshal ITCM struct to JSON
 	itcmJSON, err := json.Marshal(itcm)
 	if err != nil {
 		log.Println("Error marshaling ITCM struct:", err)
 		return err
 	}
 
-	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, project_id, form_name, form_number, form_ticket, form_status, form_data, is_project, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :project_id, :form_name, :form_number, :form_ticket, :form_status, :form_data, :is_project, :created_by)", map[string]interface{}{
+	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, project_id, form_name, form_number, form_ticket, form_status, form_data, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :project_id, :form_name, :form_number, :form_ticket, :form_status, :form_data, :created_by)", map[string]interface{}{
 		"form_id":     appID,
 		"form_uuid":   uuidString,
 		"document_id": documentID,
@@ -153,8 +125,7 @@ func AddITCM(addForm models.Form, itcm models.ITCM, isPublished bool, userID int
 		"form_number": formNumber,
 		"form_ticket": addForm.FormTicket,
 		"form_status": formStatus,
-		"form_data":   itcmJSON, // Convert JSON to string
-		"is_project":  addForm.IsProject,
+		"form_data":   itcmJSON,
 		"created_by":  username,
 	})
 
@@ -163,7 +134,7 @@ func AddITCM(addForm models.Form, itcm models.ITCM, isPublished bool, userID int
 	}
 
 	for _, signatory := range signatories {
-		uuidString := uuid.New().String() // Gunakan uuid.New() dari paket UUID yang diimpor
+		uuidString := uuid.New().String()
 		_, err := db.NamedExec("INSERT INTO sign_form (sign_uuid, form_id, name, position, role_sign, created_by) VALUES (:sign_uuid, :form_id, :name, :position, :role_sign, :created_by)", map[string]interface{}{
 			"sign_uuid":  uuidString,
 			"form_id":    appID,
@@ -181,40 +152,41 @@ func AddITCM(addForm models.Form, itcm models.ITCM, isPublished bool, userID int
 
 func GetAllFormITCM() ([]models.FormsITCM, error) {
 	rows, err := db.Query(`SELECT 
-    f.form_uuid, f.form_name, 
-    REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
-    f.form_ticket, f.form_status,
-    d.document_name,
-    p.project_name,
+	f.form_uuid, f.form_name, 
+	REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
+	f.form_ticket, f.form_status,
+	d.document_name,
+	p.project_name,
 	p.project_manager,
-    f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
-    (f.form_data->>'no_da')::text AS no_da,
-    (f.form_data->>'nama_pemohon')::text AS nama_pemohon,
-    (f.form_data->>'instansi')::text AS instansi,
-    (f.form_data->>'tanggal')::text AS tanggal,
-    (f.form_data->>'perubahan_aset')::text AS perubahan_aset,
-    (f.form_data->>'deskripsi')::text AS deskripsi
-   FROM 
-    form_ms f
-	LEFT JOIN 
-    document_ms d ON f.document_id = d.document_id
-	LEFT JOIN 
-    project_ms p ON f.project_id = p.project_id
-	WHERE
-    d.document_code = 'ITCM'
+	CASE
+		WHEN f.is_approve IS NULL THEN 'Menunggu Disetujui'
+		WHEN f.is_approve = false THEN 'Tidak Disetujui'
+		WHEN f.is_approve = true THEN 'Disetujui'
+	END AS ApprovalStatus,
+	f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+	(f.form_data->>'no_da')::text AS no_da,
+	(f.form_data->>'nama_pemohon')::text AS nama_pemohon,
+	(f.form_data->>'instansi')::text AS instansi,
+	(f.form_data->>'tanggal')::text AS tanggal,
+	(f.form_data->>'perubahan_aset')::text AS perubahan_aset,
+	(f.form_data->>'deskripsi')::text AS deskripsi
+FROM 
+	form_ms f
+LEFT JOIN 
+	document_ms d ON f.document_id = d.document_id
+LEFT JOIN 
+	project_ms p ON f.project_id = p.project_id
+WHERE
+	d.document_code = 'ITCM'
 `)
 
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-
-	// Slice to hold all form data
 	var forms []models.FormsITCM
 
-	// Iterate through the rows
 	for rows.Next() {
-		// Scan the row into the Forms struct
 		var form models.FormsITCM
 		err := rows.Scan(
 			&form.FormUUID,
@@ -225,6 +197,8 @@ func GetAllFormITCM() ([]models.FormsITCM, error) {
 			&form.DocumentName,
 			&form.ProjectName,
 			&form.ProjectManager,
+			&form.ApprovalStatus,
+			&form.Reason,
 			&form.CreatedBy,
 			&form.CreatedAt,
 			&form.UpdatedBy,
@@ -242,37 +216,42 @@ func GetAllFormITCM() ([]models.FormsITCM, error) {
 			return nil, err
 		}
 
-		// Append the form data to the slice
 		forms = append(forms, form)
 	}
-	// Return the forms as JSON response
+
 	return forms, nil
 }
 
+// untuk mengambil data spesifik hanya data form_ms
 func GetSpecITCM(id string) (models.FormITCM, error) {
 	var specITCM models.FormITCM
 
-	err := db.Get(&specITCM, `SELECT
+	err := db.Get(&specITCM, `SELECT 
 	f.form_uuid, f.form_name, 
-    REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
-    f.form_ticket, f.form_status,
-    d.document_name,
-    p.project_name,
+	REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
+	f.form_ticket, f.form_status,
+	d.document_name,
+	p.project_name,
 	p.project_manager,
-    f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
-    (f.form_data->>'no_da')::text AS no_da,
-    (f.form_data->>'nama_pemohon')::text AS nama_pemohon,
-    (f.form_data->>'instansi')::text AS instansi,
-    (f.form_data->>'tanggal')::text AS tanggal,
-    (f.form_data->>'perubahan_aset')::text AS perubahan_aset,
-    (f.form_data->>'deskripsi')::text AS deskripsi
-   FROM 
-    form_ms f
-	LEFT JOIN 
-    document_ms d ON f.document_id = d.document_id
-	LEFT JOIN 
-    project_ms p ON f.project_id = p.project_id
-	WHERE
+	CASE
+		WHEN f.is_approve IS NULL THEN 'Menunggu Disetujui'
+		WHEN f.is_approve = false THEN 'Tidak Disetujui'
+		WHEN f.is_approve = true THEN 'Disetujui'
+	END AS ApprovalStatus,
+	f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+	(f.form_data->>'no_da')::text AS no_da,
+	(f.form_data->>'nama_pemohon')::text AS nama_pemohon,
+	(f.form_data->>'instansi')::text AS instansi,
+	(f.form_data->>'tanggal')::text AS tanggal,
+	(f.form_data->>'perubahan_aset')::text AS perubahan_aset,
+	(f.form_data->>'deskripsi')::text AS deskripsi
+FROM 
+	form_ms f
+LEFT JOIN 
+	document_ms d ON f.document_id = d.document_id
+LEFT JOIN 
+	project_ms p ON f.project_id = p.project_id
+WHERE
     f.form_uuid = $1 AND d.document_code = 'ITCM'
 	`, id)
 	if err != nil {
@@ -281,6 +260,60 @@ func GetSpecITCM(id string) (models.FormITCM, error) {
 
 	return specITCM, nil
 
+}
+
+// untuk mengambil data spesifik dari frm_ms dan sign_form
+func GetSpecAllITCM(id string) ([]models.FormITCMAll, error) {
+	var speccITCM []models.FormITCMAll
+
+	err := db.Select(&speccITCM, `SELECT
+    f.form_uuid,
+    f.form_name,
+    REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
+    f.form_ticket,
+    f.form_status,
+    d.document_name,
+    p.project_name,
+    p.project_manager,
+    CASE
+        WHEN f.is_approve IS NULL THEN 'Menunggu Disetujui'
+        WHEN f.is_approve = false THEN 'Tidak Disetujui'
+        WHEN f.is_approve = true THEN 'Disetujui'
+    END AS ApprovalStatus,
+    f.reason,
+    f.created_by,
+    f.created_at,
+    f.updated_by,
+    f.updated_at,
+    f.deleted_by,
+    f.deleted_at,
+    (f.form_data->>'no_da')::text AS no_da,
+    (f.form_data->>'nama_pemohon')::text AS nama_pemohon,
+    (f.form_data->>'instansi')::text AS instansi,
+    (f.form_data->>'tanggal')::text AS tanggal,
+    (f.form_data->>'perubahan_aset')::text AS perubahan_aset,
+    (f.form_data->>'deskripsi')::text AS deskripsi,
+    sf.sign_uuid AS sign_uuid,
+    sf.name AS name,
+    sf.position AS position,
+    sf.role_sign AS role_sign
+FROM
+    form_ms f
+LEFT JOIN 
+    document_ms d ON f.document_id = d.document_id
+LEFT JOIN 
+    project_ms p ON f.project_id = p.project_id
+LEFT JOIN
+    sign_form sf ON f.form_id = sf.form_id
+WHERE
+    f.form_uuid = $1 AND d.document_code = 'ITCM'
+	`, id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return speccITCM, nil
 }
 
 func UpdateFormITCM(updateITCM models.Form, data models.ITCM, username string, userID int, isPublished bool, id string) (models.Form, error) {
@@ -302,7 +335,7 @@ func UpdateFormITCM(updateITCM models.Form, data models.ITCM, username string, u
 		log.Println("Error marshaling DampakAnalisa struct:", err)
 		return models.Form{}, err
 	}
-	log.Println("ITCM JSON:", string(daJSON)) // Periksa hasil marshaling
+	log.Println("ITCM JSON:", string(daJSON))
 
 	_, err = db.NamedExec("UPDATE form_ms SET user_id = :user_id, form_name = :form_name, form_ticket = :form_ticket, form_status = :form_status, form_data = :form_data, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id AND form_status = 'Draft'", map[string]interface{}{
 		"user_id":     userID,

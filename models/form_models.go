@@ -15,7 +15,6 @@ type Form struct {
 	FormTicket   string         `json:"form_ticket" db:"form_ticket" validate:"required"`
 	FormStatus   string         `json:"form_status" db:"form_status"`
 	Created_by   string         `json:"created_by" db:"created_by"`
-	IsProject    bool           `json:"is_project" db:"is_project"`
 	ProjectUUID  string         `json:"project_uuid" db:"project_uuid"`
 	ProjectID    int64          `json:"project_id" db:"project_id"`
 	Created_at   time.Time      `json:"created_at" db:"created_at"`
@@ -63,6 +62,9 @@ type Formss struct {
 	FormStatus                           string         `json:"form_status" db:"form_status"`
 	DocumentName                         string         `json:"document_name" db:"document_name"`
 	ProjectName                          string         `json:"project_name" db:"project_name"`
+	IsApprove                            sql.NullBool   `json:"is_approve" db:"is_approve"`
+	ApprovalStatus                       string         `json:"approval_status"`
+	Reason                               sql.NullString `json:"reason" db:"reason"`
 	CreatedBy                            string         `json:"created_by" db:"created_by"`
 	CreatedAt                            time.Time      `json:"created_at" db:"created_at"`
 	UpdatedBy                            sql.NullString `json:"updated_by" db:"updated_by"`
