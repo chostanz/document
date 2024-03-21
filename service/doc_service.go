@@ -37,13 +37,6 @@ func DecryptJWE(jweToken string, secretKey string) (string, error) {
 }
 
 func GetUserInfoFromToken(tokenStr string) (string, error) {
-	// // Dekripsi token JWE
-	// secretKey := "secretJwToken"
-	// decrypted, err := DecryptJWE(tokenStr, secretKey)
-	// if err != nil {
-	// 	return "", fmt.Errorf("Gagal mendekripsi token: %v", err)
-	// }
-
 	// Parse token JWT yang telah didekripsi
 	log.Print("token str ", tokenStr)
 	var claims JwtCustomClaims
@@ -58,12 +51,6 @@ func GetUserInfoFromToken(tokenStr string) (string, error) {
 }
 
 func GetUserNameFromToken(tokenStr string) (string, error) {
-	// // Dekripsi token JWE
-	// secretKey := "secretJwToken"
-	// decrypted, err := DecryptJWE(tokenStr, secretKey)
-	// if err != nil {
-	// 	return "", fmt.Errorf("Gagal mendekripsi token: %v", err)
-	// }
 
 	// Parse token JWT yang telah didekripsi
 	log.Print("token str ", tokenStr)
@@ -78,51 +65,6 @@ func GetUserNameFromToken(tokenStr string) (string, error) {
 	return username, nil
 }
 
-// func GetUserInfoFromToken(tokenStr string) (string, error) {
-// 	secretKey := "secretJwToken" // Ganti dengan kunci yang benar
-
-// 	// Dekripsi token JWE
-// 	decrypted, err := DecryptJWE(tokenStr, secretKey)
-// 	if err != nil {
-// 		fmt.Println("Gagal mendekripsi token woy:", err)
-// 		return "", err
-// 	}
-
-// 	// Parse token JWT yang telah didekripsi
-// 	var claims JwtCustomClaims
-// 	err = json.Unmarshal([]byte(decrypted), &claims)
-// 	if err != nil {
-// 		fmt.Println("Gagal mengurai klaim:", err)
-// 		return "", err
-// 	}
-
-// 	// Mengambil nilai user_uuid dari klaim
-// 	userUUID, ok := claims["user_uuid"].(string)
-// 	if !ok {
-// 		return "", errors.New("Tidak dapat menemukan user_uuid dalam token")
-// 	}
-
-// 	return userUUID, nil
-// }
-
-// // // Mengembalikan user_uuid dari token
-// // return claims.UserUUID, nil
-// parts := strings.Split(tokenStr, ".")
-
-// // Mengurai bagian terenkripsi token (payload)
-// payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-// if err != nil {
-// 	return "", fmt.Errorf("Gagal mendekode payload token: %v", err)
-// }
-
-// fmt.Println("Payload yang diuraikan:", string(payload))
-
-// // Parse payload sebagai struktur yang sesuai
-// var claims map[string]interface{}
-// if err := json.Unmarshal(payload, &claims); err != nil {
-// 	return "", fmt.Errorf("Gagal mengurai klaim: %v", err)
-// }
-
 func AddDocument(addDocument models.Document, username string) error {
 
 	// username, errP := GetUsernameByID(userUUID)
@@ -136,13 +78,12 @@ func AddDocument(addDocument models.Document, username string) error {
 
 	uuid := uuid.New()
 	uuidString := uuid.String()
-	_, err := db.NamedExec("INSERT INTO document_ms (document_id, document_uuid, document_code, document_name, document_format_number, created_by) VALUES (:document_id, :document_uuid, :document_code, :document_name, :document_format_number, :created_by)", map[string]interface{}{
-		"document_id":            app_id,
-		"document_uuid":          uuidString,
-		"document_code":          addDocument.Code,
-		"document_name":          addDocument.Name,
-		"document_format_number": addDocument.NumberFormat,
-		"created_by":             username,
+	_, err := db.NamedExec("INSERT INTO document_ms (document_id, document_uuid, document_code, document_name, created_by) VALUES (:document_id, :document_uuid, :document_code, :document_name, :created_by)", map[string]interface{}{
+		"document_id":   app_id,
+		"document_uuid": uuidString,
+		"document_code": addDocument.Code,
+		"document_name": addDocument.Name,
+		"created_by":    username,
 	})
 	if err != nil {
 		return err
@@ -153,7 +94,7 @@ func AddDocument(addDocument models.Document, username string) error {
 func GetAllDoc() ([]models.Document, error) {
 
 	document := []models.Document{}
-	rows, errSelect := db.Queryx("select document_uuid, document_order, document_code, document_name, document_format_number, created_by, created_at, updated_by, updated_at from document_ms WHERE deleted_at IS NULL")
+	rows, errSelect := db.Queryx("select document_uuid, document_order, document_code, document_name, created_by, created_at, updated_by, updated_at from document_ms WHERE deleted_at IS NULL")
 	if errSelect != nil {
 		return nil, errSelect
 	}
@@ -169,7 +110,7 @@ func GetAllDoc() ([]models.Document, error) {
 func ShowDocById(id string) (models.Document, error) {
 	var document models.Document
 
-	err := db.Get(&document, "SELECT document_uuid, document_order, document_code, document_name,document_format_number, created_by, created_at, updated_by, updated_at FROM document_ms WHERE document_uuid = $1 AND deleted_at IS NULL", id)
+	err := db.Get(&document, "SELECT document_uuid, document_order, document_code, document_name, created_by, created_at, updated_by, updated_at FROM document_ms WHERE document_uuid = $1 AND deleted_at IS NULL", id)
 	if err != nil {
 		return models.Document{}, err
 	}
@@ -242,13 +183,12 @@ func UpdateDocument(updateDoc models.Document, id string, username string) (mode
 
 	currentTime := time.Now()
 
-	_, err := db.NamedExec("UPDATE document_ms SET document_code = :document_code, document_name = :document_name, document_format_number = :document_format_number, updated_by = :updated_by, updated_at = :updated_at WHERE document_uuid = :id", map[string]interface{}{
-		"document_code":          updateDoc.Code,
-		"document_name":          updateDoc.Name,
-		"document_format_number": updateDoc.NumberFormat,
-		"updated_by":             username,
-		"updated_at":             currentTime,
-		"id":                     id,
+	_, err := db.NamedExec("UPDATE document_ms SET document_code = :document_code, document_name = :document_name, updated_by = :updated_by, updated_at = :updated_at WHERE document_uuid = :id", map[string]interface{}{
+		"document_code": updateDoc.Code,
+		"document_name": updateDoc.Name,
+		"updated_by":    username,
+		"updated_at":    currentTime,
+		"id":            id,
 	})
 	if err != nil {
 		log.Print(err)
