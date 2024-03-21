@@ -20,7 +20,7 @@ func GetSignatureForm(id string) ([]models.Signatories, error) {
 	sf.updated_by, 
 	sf.updated_at, 
 	sf.deleted_by, 
-	sf.deleted_at,
+	sf.deleted_at
 FROM 
 	sign_form sf 
 	JOIN form_ms fm ON sf.form_id = fm.form_id 

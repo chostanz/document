@@ -45,7 +45,10 @@ func Route() *echo.Echo {
 	adminMember := e.Group("/api")
 	adminMember.Use(middleware.AdminMemberMiddleware)
 
-	adminMember.PUT("/form/update/:id", controller.UpdateForm)
+	//admin
+	adminGroup := e.Group("/admin")
+	adminGroup.Use(middleware.AdminMemberMiddleware)
+	adminGroup.GET("/my/form/division", controller.FormByDivision)
 
 	e.GET("/document", controller.GetAllDoc)
 	e.GET("/document/:id", controller.ShowDocById)
@@ -55,15 +58,18 @@ func Route() *echo.Echo {
 	e.GET("/form", controller.GetAllForm)
 	e.GET("/form/:id", controller.ShowFormById)
 	adminMember.POST("/form/add", controller.AddForm)
+	adminMember.GET("/my/form", controller.MyForm)
+	adminMember.PUT("/form/update/:id", controller.UpdateForm)
 
 	adminMember.POST("/add/da", controller.AddDA)
 	e.GET("/dampak/analisa", controller.GetAllFormDA)
 	e.GET("/dampak/analisa/:id", controller.GetSpecDA)
 	e.GET("/form/signatories/:id", controller.GetSignatureForm)
 	adminMember.PUT("/dampak/analisa/update/:id", controller.UpdateFormDA)
+
+	//tandatangan
 	e.GET("/signatory/:id", controller.GetSpecSignatureByID)
 	adminMember.PUT("/signature/update/:id", controller.UpdateSignature)
-	adminMember.GET("/my/form", controller.MyForm)
 
 	//FORM itcm
 	adminMember.POST("/add/itcm", controller.AddITCM)
@@ -71,16 +77,13 @@ func Route() *echo.Echo {
 	e.GET("/form/itcm/:id", controller.GetSpecITCM)
 	e.GET("/itcm/:id", controller.GetSpecAllITCM)
 	adminMember.PUT("/form/itcm/update/:id", controller.UpdateFormITCM)
+	adminMember.GET("/my/form/itcm", controller.GetAllFormITCMbyUserID)
+	adminGroup.GET("/itcm/all", controller.GetAllFormITCMAdmin)
 
 	//add approval
 	adminMember.PUT("/form/approval/:id", controller.AddApproval)
 	//form BA
 	adminMember.POST("/add/ba", controller.AddBA)
-
-	//admin
-	adminGroup := e.Group("/admin")
-	adminGroup.Use(middleware.AdminMemberMiddleware)
-	adminGroup.GET("/my/form/division", controller.FormByDivision)
 
 	//product
 	e.GET("/product", controller.GetAllProduct)

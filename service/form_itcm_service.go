@@ -150,41 +150,189 @@ func AddITCM(addForm models.Form, itcm models.ITCM, isPublished bool, userID int
 	return nil
 }
 
+// menampilkan form tanpa token
 func GetAllFormITCM() ([]models.FormsITCM, error) {
-	rows, err := db.Query(`SELECT 
-	f.form_uuid, f.form_name, 
-	REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
-	f.form_ticket, f.form_status,
-	d.document_name,
-	p.project_name,
-	p.project_manager,
-	CASE
-		WHEN f.is_approve IS NULL THEN 'Menunggu Disetujui'
-		WHEN f.is_approve = false THEN 'Tidak Disetujui'
-		WHEN f.is_approve = true THEN 'Disetujui'
-	END AS ApprovalStatus,
-	f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
-	(f.form_data->>'no_da')::text AS no_da,
-	(f.form_data->>'nama_pemohon')::text AS nama_pemohon,
-	(f.form_data->>'instansi')::text AS instansi,
-	(f.form_data->>'tanggal')::text AS tanggal,
-	(f.form_data->>'perubahan_aset')::text AS perubahan_aset,
-	(f.form_data->>'deskripsi')::text AS deskripsi
-FROM 
-	form_ms f
-LEFT JOIN 
-	document_ms d ON f.document_id = d.document_id
-LEFT JOIN 
-	project_ms p ON f.project_id = p.project_id
-WHERE
-	d.document_code = 'ITCM'
-`)
-
+	rows, err := db.Query(`SELECT
+		f.form_uuid, f.form_name,
+		REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
+		f.form_ticket, f.form_status,
+		d.document_name,
+		p.project_name,
+		p.project_manager,
+		CASE
+			WHEN f.is_approve IS NULL THEN 'Menunggu Disetujui'
+			WHEN f.is_approve = false THEN 'Tidak Disetujui'
+			WHEN f.is_approve = true THEN 'Disetujui'
+		END AS ApprovalStatus,
+		f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+		(f.form_data->>'no_da')::text AS no_da,
+		(f.form_data->>'nama_pemohon')::text AS nama_pemohon,
+		(f.form_data->>'instansi')::text AS instansi,
+		(f.form_data->>'tanggal')::text AS tanggal,
+		(f.form_data->>'perubahan_aset')::text AS perubahan_aset,
+		(f.form_data->>'deskripsi')::text AS deskripsi
+	FROM
+		form_ms f
+	LEFT JOIN
+		document_ms d ON f.document_id = d.document_id
+	LEFT JOIN
+		project_ms p ON f.project_id = p.project_id
+	WHERE
+		d.document_code = 'ITCM'
+	`)
+	var forms []models.FormsITCM
+	//rows, err := db.Query(&forms, query, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+
+	for rows.Next() {
+		var form models.FormsITCM
+		err := rows.Scan(
+			&form.FormUUID,
+			&form.FormName,
+			&form.FormNumber,
+			&form.FormTicket,
+			&form.FormStatus,
+			&form.DocumentName,
+			&form.ProjectName,
+			&form.ProjectManager,
+			&form.ApprovalStatus,
+			&form.Reason,
+			&form.CreatedBy,
+			&form.CreatedAt,
+			&form.UpdatedBy,
+			&form.UpdatedAt,
+			&form.DeletedBy,
+			&form.DeletedAt,
+			&form.NoDA,
+			&form.NamaPemohon,
+			&form.Intansi,
+			&form.Tanggal,
+			&form.PerubahanAset,
+			&form.Deskripsi,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		forms = append(forms, form)
+	}
+
+	return forms, nil
+}
+
+// menampilkan form berdasar user/ milik dia sendiri
+func GetAllITCMbyUserID(userID int) ([]models.FormsITCM, error) {
+	rows, err := db.Query(`SELECT
+		f.form_uuid, f.form_name,
+		REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
+		f.form_ticket, f.form_status,
+		d.document_name,
+		p.project_name,
+		p.project_manager,
+		CASE
+			WHEN f.is_approve IS NULL THEN 'Menunggu Disetujui'
+			WHEN f.is_approve = false THEN 'Tidak Disetujui'
+			WHEN f.is_approve = true THEN 'Disetujui'
+		END AS ApprovalStatus,
+		f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+		(f.form_data->>'no_da')::text AS no_da,
+		(f.form_data->>'nama_pemohon')::text AS nama_pemohon,
+		(f.form_data->>'instansi')::text AS instansi,
+		(f.form_data->>'tanggal')::text AS tanggal,
+		(f.form_data->>'perubahan_aset')::text AS perubahan_aset,
+		(f.form_data->>'deskripsi')::text AS deskripsi
+		FROM 
+			form_ms f
+		LEFT JOIN 
+			document_ms d ON f.document_id = d.document_id
+		LEFT JOIN 
+			project_ms p ON f.project_id = p.project_id
+		WHERE
+			f.user_id = $1 AND d.document_code = 'ITCM'
+			`, userID)
 	var forms []models.FormsITCM
+	//rows, err := db.Query(&forms, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var form models.FormsITCM
+		err := rows.Scan(
+			&form.FormUUID,
+			&form.FormName,
+			&form.FormNumber,
+			&form.FormTicket,
+			&form.FormStatus,
+			&form.DocumentName,
+			&form.ProjectName,
+			&form.ProjectManager,
+			&form.ApprovalStatus,
+			&form.Reason,
+			&form.CreatedBy,
+			&form.CreatedAt,
+			&form.UpdatedBy,
+			&form.UpdatedAt,
+			&form.DeletedBy,
+			&form.DeletedAt,
+			&form.NoDA,
+			&form.NamaPemohon,
+			&form.Intansi,
+			&form.Tanggal,
+			&form.PerubahanAset,
+			&form.Deskripsi,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		forms = append(forms, form)
+	}
+
+	return forms, nil
+
+}
+
+// menampilkan form dari admin
+func GetAllFormITCMAdmin() ([]models.FormsITCM, error) {
+	rows, err := db.Query(`SELECT
+		f.form_uuid, f.form_name,
+		REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
+		f.form_ticket, f.form_status,
+		d.document_name,
+		p.project_name,
+		p.project_manager,
+		CASE
+			WHEN f.is_approve IS NULL THEN 'Menunggu Disetujui'
+			WHEN f.is_approve = false THEN 'Tidak Disetujui'
+			WHEN f.is_approve = true THEN 'Disetujui'
+		END AS ApprovalStatus,
+		f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+		(f.form_data->>'no_da')::text AS no_da,
+		(f.form_data->>'nama_pemohon')::text AS nama_pemohon,
+		(f.form_data->>'instansi')::text AS instansi,
+		(f.form_data->>'tanggal')::text AS tanggal,
+		(f.form_data->>'perubahan_aset')::text AS perubahan_aset,
+		(f.form_data->>'deskripsi')::text AS deskripsi
+	FROM
+		form_ms f
+	LEFT JOIN
+		document_ms d ON f.document_id = d.document_id
+	LEFT JOIN
+		project_ms p ON f.project_id = p.project_id
+	WHERE
+		d.document_code = 'ITCM'
+	`)
+	var forms []models.FormsITCM
+	//rows, err := db.Query(&forms, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var form models.FormsITCM
