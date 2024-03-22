@@ -483,14 +483,6 @@ func UpdateFormITCM(c echo.Context) error {
 		})
 	}
 
-	if whitespace.MatchString(updateFormRequest.FormData.FormName) {
-		return c.JSON(http.StatusUnprocessableEntity, &models.Response{
-			Code:    422,
-			Message: "Name tidak boleh dimulai dengan spasi!",
-			Status:  false,
-		})
-	}
-
 	if err := c.Validate(&updateFormRequest.FormData); err != nil {
 		return c.JSON(http.StatusInternalServerError, &models.Response{
 			Code:    422,

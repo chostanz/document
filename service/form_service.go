@@ -260,12 +260,11 @@ func AddForm(addFrom models.Form, isPublished bool, username string, userID int,
 		return err
 	}
 
-	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, form_name, form_number, form_ticket, form_status, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :form_name, :form_number, :form_ticket, :form_status, :created_by)", map[string]interface{}{
+	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id,form_number, form_ticket, form_status, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id,:form_number, :form_ticket, :form_status, :created_by)", map[string]interface{}{
 		"form_id":     app_id,
 		"form_uuid":   uuidString,
 		"document_id": documentID,
 		"user_id":     userID,
-		"form_name":   addFrom.FormName,
 		"form_number": formNumber,
 		"form_ticket": addFrom.FormTicket,
 		"form_status": formStatus,
@@ -426,8 +425,7 @@ func UpdateForm(updateForm models.Form, id string, isPublished bool, username st
 	}
 	log.Println("EXISTING USER ID : ", existingUserID)
 
-	_, err = db.NamedExec("UPDATE form_ms SET form_name = :form_name, form_number = :form_number, form_ticket = :form_ticket, form_status = :form_status, document_id = :document_id, user_id = :user_id, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id and form_status='Draft'", map[string]interface{}{
-		"form_name":   updateForm.FormName,
+	_, err = db.NamedExec("UPDATE form_ms SET  form_number = :form_number, form_ticket = :form_ticket, form_status = :form_status, document_id = :document_id, user_id = :user_id, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id and form_status='Draft'", map[string]interface{}{
 		"form_number": formNumber,
 		"form_ticket": updateForm.FormTicket,
 		"form_status": formStatus,

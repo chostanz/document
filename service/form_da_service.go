@@ -114,12 +114,11 @@ func AddDA(addDA models.Form, isPublished bool, username string, userID int, div
 		return err
 	}
 
-	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, form_name, form_number, form_ticket, form_status, form_data, project_id, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :form_name, :form_number, :form_ticket, :form_status, :form_data, :project_id, :created_by)", map[string]interface{}{
+	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id,form_number, form_ticket, form_status, form_data, project_id, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id,  :form_number, :form_ticket, :form_status, :form_data, :project_id, :created_by)", map[string]interface{}{
 		"form_id":     app_id,
 		"form_uuid":   uuidString,
 		"document_id": documentID,
 		"user_id":     userID,
-		"form_name":   addDA.FormName,
 		"form_number": formNumberDA,
 		"form_ticket": addDA.FormTicket,
 		"form_status": formStatus,
@@ -153,7 +152,7 @@ func AddDA(addDA models.Form, isPublished bool, username string, userID int, div
 func GetAllFormDA() ([]models.Formss, error) {
 	rows, err := db.Query(`
 		SELECT 
-			f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, 
+			f.form_uuid,  f.form_number, f.form_ticket, f.form_status, 
 			d.document_name,
 			p.project_name,
 			f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
@@ -193,7 +192,6 @@ func GetAllFormDA() ([]models.Formss, error) {
 		var form models.Formss
 		err := rows.Scan(
 			&form.FormUUID,
-			&form.FormName,
 			&form.FormNumber,
 			&form.FormTicket,
 			&form.FormStatus,
@@ -229,7 +227,7 @@ func GetAllFormDA() ([]models.Formss, error) {
 func GetAllDAbyUserID(userID int) ([]models.Formss, error) {
 	rows, err := db.Query(`
 	SELECT 
-		f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, 
+		f.form_uuid, f.form_number, f.form_ticket, f.form_status, 
 		d.document_name,
 		p.project_name,
 		f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
@@ -269,7 +267,6 @@ func GetAllDAbyUserID(userID int) ([]models.Formss, error) {
 		var form models.Formss
 		err := rows.Scan(
 			&form.FormUUID,
-			&form.FormName,
 			&form.FormNumber,
 			&form.FormTicket,
 			&form.FormStatus,
@@ -305,7 +302,7 @@ func GetAllDAbyUserID(userID int) ([]models.Formss, error) {
 func GetAllDAbyAdmin() ([]models.Formss, error) {
 	rows, err := db.Query(`
 	SELECT 
-		f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, 
+		f.form_uuid, f.form_number, f.form_ticket, f.form_status, 
 		d.document_name,
 		p.project_name,
 		f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
@@ -345,7 +342,6 @@ func GetAllDAbyAdmin() ([]models.Formss, error) {
 		var form models.Formss
 		err := rows.Scan(
 			&form.FormUUID,
-			&form.FormName,
 			&form.FormNumber,
 			&form.FormTicket,
 			&form.FormStatus,
@@ -382,7 +378,7 @@ func GetSpecDA(id string) (models.Formss, error) {
 	var specDA models.Formss
 
 	err := db.Get(&specDA, `SELECT 
-	f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
+	f.form_uuid, f.form_number, f.form_ticket, f.form_status,
 	d.document_name,
 	p.project_name,
 	CASE
@@ -420,7 +416,7 @@ func GetSpecAllDA(id string) ([]models.FormsDAAll, error) {
 	var signatories []models.FormsDAAll
 
 	err := db.Select(&signatories, `SELECT 
-	f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
+	f.form_uuid, f.form_number, f.form_ticket, f.form_status,
 	d.document_name,
 	p.project_name,
 	CASE
@@ -480,9 +476,8 @@ func UpdateFormDA(updateDA models.Form, data models.DampakAnalisa, username stri
 	}
 	log.Println("DampakAnalisa JSON:", string(daJSON)) // Periksa hasil marshaling
 
-	_, err = db.NamedExec("UPDATE form_ms SET user_id = :user_id, form_name = :form_name, form_ticket = :form_ticket, form_status = :form_status, form_data = :form_data, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id AND form_status = 'Draft'", map[string]interface{}{
+	_, err = db.NamedExec("UPDATE form_ms SET user_id = :user_id,  form_ticket = :form_ticket, form_status = :form_status, form_data = :form_data, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id AND form_status = 'Draft'", map[string]interface{}{
 		"user_id":     userID,
-		"form_name":   updateDA.FormName,
 		"form_ticket": updateDA.FormTicket,
 		"project_id":  projectID,
 		"form_status": formStatus,

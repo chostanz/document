@@ -55,13 +55,12 @@ func AddBA(addForm models.Form, ba models.BA, isPublished bool, userID int, user
 		return err
 	}
 
-	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, project_id, form_name, form_number, form_ticket, form_status, form_data, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :project_id, :form_name, :form_number, :form_ticket, :form_status, :form_data, :created_by)", map[string]interface{}{
+	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, project_id, form_number, form_ticket, form_status, form_data, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :project_id, :form_number, :form_ticket, :form_status, :form_data, :created_by)", map[string]interface{}{
 		"form_id":     appID,
 		"form_uuid":   uuidString,
 		"document_id": documentID,
 		"user_id":     userID,
 		"project_id":  projectID,
-		"form_name":   addForm.FormName,
 		"form_number": formNumber,
 		"form_ticket": addForm.FormTicket,
 		"form_status": formStatus,
@@ -93,7 +92,7 @@ func AddBA(addForm models.Form, ba models.BA, isPublished bool, userID int, user
 func GetAllFormBA() ([]models.FormsBA, error) {
 	rows, err := db.Query(`
 		SELECT 
-			f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
+			f.form_uuid,  f.form_number, f.form_ticket, f.form_status,
 			d.document_name,
 			p.project_name,
 			f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
@@ -127,7 +126,140 @@ func GetAllFormBA() ([]models.FormsBA, error) {
 		var form models.FormsBA
 		err := rows.Scan(
 			&form.FormUUID,
-			&form.FormName,
+			&form.FormNumber,
+			&form.FormTicket,
+			&form.FormStatus,
+			&form.DocumentName,
+			&form.ProjectName,
+			&form.CreatedBy,
+			&form.CreatedAt,
+			&form.UpdatedBy,
+			&form.UpdatedAt,
+			&form.DeletedBy,
+			&form.DeletedAt,
+			&form.Judul,
+			&form.Tanggal,
+			&form.AppName,
+			&form.NoDA,
+			&form.NoITCM,
+			&form.DilakukanOleh,
+			&form.DidampingiOleh,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Append the form data to the slice
+		forms = append(forms, form)
+	}
+	// Return the forms as JSON response
+	return forms, nil
+}
+
+func GetAllBAbyUserID(userID int) ([]models.FormsBA, error) {
+	rows, err := db.Query(`
+		SELECT 
+			f.form_uuid,  f.form_number, f.form_ticket, f.form_status,
+			d.document_name,
+			p.project_name,
+			f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+			(f.form_data->>'judul')::text AS judul,
+			(f.form_data->>'tanggal')::text AS tanggal,
+			(f.form_data->>'nama_aplikasi')::text AS nama_aplikasi,
+			(f.form_data->>'no_da')::text AS no_da,
+			(f.form_data->>'no_itcm')::text AS no_itcm,
+			(f.form_data->>'dilakukan_oleh')::text AS dilakukan_oleh,
+			(f.form_data->>'didampingi_oleh')::text AS didampingi_oleh
+			FROM 
+			form_ms f
+		LEFT JOIN 
+			document_ms d ON f.document_id = d.document_id
+		LEFT JOIN 
+			project_ms p ON f.project_id = p.project_id
+			WHERE
+			d.document_code = 'BA' 
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Slice to hold all form data
+	var forms []models.FormsBA
+
+	// Iterate through the rows
+	for rows.Next() {
+		// Scan the row into the Forms struct
+		var form models.FormsBA
+		err := rows.Scan(
+			&form.FormUUID,
+			&form.FormNumber,
+			&form.FormTicket,
+			&form.FormStatus,
+			&form.DocumentName,
+			&form.ProjectName,
+			&form.CreatedBy,
+			&form.CreatedAt,
+			&form.UpdatedBy,
+			&form.UpdatedAt,
+			&form.DeletedBy,
+			&form.DeletedAt,
+			&form.Judul,
+			&form.Tanggal,
+			&form.AppName,
+			&form.NoDA,
+			&form.NoITCM,
+			&form.DilakukanOleh,
+			&form.DidampingiOleh,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Append the form data to the slice
+		forms = append(forms, form)
+	}
+	// Return the forms as JSON response
+	return forms, nil
+}
+
+func GetAllBAbyAdmin() ([]models.FormsBA, error) {
+	rows, err := db.Query(`
+		SELECT 
+			f.form_uuid, f.form_number, f.form_ticket, f.form_status,
+			d.document_name,
+			p.project_name,
+			f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+			(f.form_data->>'judul')::text AS judul,
+			(f.form_data->>'tanggal')::text AS tanggal,
+			(f.form_data->>'nama_aplikasi')::text AS nama_aplikasi,
+			(f.form_data->>'no_da')::text AS no_da,
+			(f.form_data->>'no_itcm')::text AS no_itcm,
+			(f.form_data->>'dilakukan_oleh')::text AS dilakukan_oleh,
+			(f.form_data->>'didampingi_oleh')::text AS didampingi_oleh
+			FROM 
+			form_ms f
+		LEFT JOIN 
+			document_ms d ON f.document_id = d.document_id
+		LEFT JOIN 
+			project_ms p ON f.project_id = p.project_id
+			WHERE
+			d.document_code = 'BA' 
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Slice to hold all form data
+	var forms []models.FormsBA
+
+	// Iterate through the rows
+	for rows.Next() {
+		// Scan the row into the Forms struct
+		var form models.FormsBA
+		err := rows.Scan(
+			&form.FormUUID,
 			&form.FormNumber,
 			&form.FormTicket,
 			&form.FormStatus,
@@ -161,7 +293,7 @@ func GetAllFormBA() ([]models.FormsBA, error) {
 func GetSpecBA(id string) (models.FormsBA, error) {
 	var specBA models.FormsBA
 	err := db.Get(&specBA, `SELECT 
-	f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
+	f.form_uuid,f.form_number, f.form_ticket, f.form_status,
 	d.document_name,
 	p.project_name,
 	f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
@@ -192,7 +324,7 @@ func GetSpecAllBA(id string) ([]models.FormsBAAll, error) {
 	var forms []models.FormsBAAll
 
 	err := db.Select(&forms, `SELECT 
-	f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
+	f.form_uuid, f.form_number, f.form_ticket, f.form_status,
 	d.document_name,
 	p.project_name,
 	f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
@@ -246,9 +378,8 @@ func UpdateBA(updateBA models.Form, data models.BA, username string, userID int,
 	}
 	log.Println("DampakAnalisa JSON:", string(daJSON)) // Periksa hasil marshaling
 
-	_, err = db.NamedExec("UPDATE form_ms SET user_id = :user_id, form_name = :form_name, form_ticket = :form_ticket, form_status = :form_status, form_data = :form_data, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id AND form_status = 'Draft'", map[string]interface{}{
+	_, err = db.NamedExec("UPDATE form_ms SET user_id = :user_id, form_ticket = :form_ticket, form_status = :form_status, form_data = :form_data, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id AND form_status = 'Draft'", map[string]interface{}{
 		"user_id":     userID,
-		"form_name":   updateBA.FormName,
 		"form_ticket": updateBA.FormTicket,
 		"project_id":  projectID,
 		"form_status": formStatus,

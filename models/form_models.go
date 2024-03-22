@@ -10,7 +10,6 @@ type Form struct {
 	DocumentUUID string         `json:"document_uuid" db:"document_uuid"`
 	DocumentID   int64          `json:"document_id" db:"document_id"`
 	UserID       int            `json:"user_id" db:"user_id" validate:"required"`
-	FormName     string         `json:"form_name" db:"form_name" validate:"required"`
 	FormNumber   string         `json:"form_number" db:"form_number"`
 	FormTicket   string         `json:"form_ticket" db:"form_ticket" validate:"required"`
 	FormStatus   string         `json:"form_status" db:"form_status"`
@@ -26,7 +25,6 @@ type Form struct {
 
 type Forms struct {
 	FormUUID     string         `json:"form_uuid" db:"form_uuid"`
-	FormName     string         `json:"form_name" db:"form_name"`
 	FormNumber   string         `json:"form_number" db:"form_number"`
 	FormTicket   string         `json:"form_ticket" db:"form_ticket"`
 	FormStatus   string         `json:"form_status" db:"form_status"`

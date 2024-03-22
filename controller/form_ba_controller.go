@@ -219,6 +219,136 @@ func GetSpecAllBA(c echo.Context) error {
 	return c.JSON(http.StatusOK, getDoc)
 }
 
+// menampilkan form dari user/ milik dia sendiri
+func GetAllFormBAbyUserID(c echo.Context) error {
+	tokenString := c.Request().Header.Get("Authorization")
+	secretKey := "secretJwToken"
+
+	if tokenString == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak ditemukan!",
+			"status":  false,
+		})
+	}
+
+	// Periksa apakah tokenString mengandung "Bearer "
+	if !strings.HasPrefix(tokenString, "Bearer ") {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	// Hapus "Bearer " dari tokenString
+	tokenOnly := strings.TrimPrefix(tokenString, "Bearer ")
+
+	//dekripsi token JWE
+	decrypted, err := DecryptJWE(tokenOnly, secretKey)
+	if err != nil {
+		fmt.Println("Gagal mendekripsi token:", err)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	var claims JwtCustomClaims
+	errJ := json.Unmarshal([]byte(decrypted), &claims)
+	if errJ != nil {
+		fmt.Println("Gagal mengurai klaim:", errJ)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+	userID := c.Get("user_id").(int)
+	roleCode := c.Get("role_code").(string)
+
+	fmt.Println("User ID :", userID)
+	fmt.Println("Role code", roleCode)
+	form, err := service.GetAllBAbyUserID(userID)
+	if err != nil {
+		log.Print(err)
+		response := models.Response{
+			Code:    500,
+			Message: "Terjadi kesalahan internal server. Mohon coba beberapa saat lagi",
+			Status:  false,
+		}
+		return c.JSON(http.StatusInternalServerError, response)
+	}
+	return c.JSON(http.StatusOK, form)
+
+}
+
+// menampilkan form itcm admin
+func GetAllFormBAAdmin(c echo.Context) error {
+	tokenString := c.Request().Header.Get("Authorization")
+	secretKey := "secretJwToken"
+
+	if tokenString == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak ditemukan!",
+			"status":  false,
+		})
+	}
+
+	// Periksa apakah tokenString mengandung "Bearer "
+	if !strings.HasPrefix(tokenString, "Bearer ") {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	// Hapus "Bearer " dari tokenString
+	tokenOnly := strings.TrimPrefix(tokenString, "Bearer ")
+
+	//dekripsi token JWE
+	decrypted, err := DecryptJWE(tokenOnly, secretKey)
+	if err != nil {
+		fmt.Println("Gagal mendekripsi token:", err)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	var claims JwtCustomClaims
+	errJ := json.Unmarshal([]byte(decrypted), &claims)
+	if errJ != nil {
+		fmt.Println("Gagal mengurai klaim:", errJ)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+	userID := c.Get("user_id").(int)
+	roleCode := c.Get("role_code").(string)
+
+	fmt.Println("User ID :", userID)
+	fmt.Println("Role code", roleCode)
+	form, err := service.GetAllBAbyAdmin()
+	if err != nil {
+		log.Print(err)
+		response := models.Response{
+			Code:    500,
+			Message: "Terjadi kesalahan internal server. Mohon coba beberapa saat lagi",
+			Status:  false,
+		}
+		return c.JSON(http.StatusInternalServerError, response)
+	}
+	return c.JSON(http.StatusOK, form)
+
+}
+
 func UpdateFormBA(c echo.Context) error {
 	id := c.Param("id")
 
@@ -348,15 +478,6 @@ func UpdateFormBA(c echo.Context) error {
 			Status:  false,
 		})
 	}
-
-	if whitespace.MatchString(updateFormRequest.FormData.FormName) {
-		return c.JSON(http.StatusUnprocessableEntity, &models.Response{
-			Code:    422,
-			Message: "Name tidak boleh dimulai dengan spasi!",
-			Status:  false,
-		})
-	}
-
 	if err := c.Validate(&updateFormRequest.FormData); err != nil {
 		return c.JSON(http.StatusInternalServerError, &models.Response{
 			Code:    422,

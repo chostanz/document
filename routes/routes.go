@@ -47,7 +47,7 @@ func Route() *echo.Echo {
 
 	//admin
 	adminGroup := e.Group("/admin")
-	adminGroup.Use(middleware.AdminMemberMiddleware)
+	adminGroup.Use(middleware.AdminMiddleware)
 	adminGroup.GET("/my/form/division", controller.FormByDivision)
 
 	e.GET("/document", controller.GetAllDoc)
@@ -91,6 +91,8 @@ func Route() *echo.Echo {
 	e.GET("/form/ba", controller.GetAllFormBA)
 	e.GET("/form/ba/:id", controller.GetSpecBA)
 	e.GET("/ba/:id", controller.GetSpecAllBA)
+	adminMember.GET("/my/form/ba", controller.GetAllFormBAbyUserID)
+	adminGroup.GET("/ba/all", controller.GetAllFormBAAdmin)
 	adminMember.PUT("/form/ba/update/:id", controller.UpdateFormBA)
 
 	//product

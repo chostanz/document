@@ -115,13 +115,12 @@ func AddITCM(addForm models.Form, itcm models.ITCM, isPublished bool, userID int
 		return err
 	}
 
-	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, project_id, form_name, form_number, form_ticket, form_status, form_data, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :project_id, :form_name, :form_number, :form_ticket, :form_status, :form_data, :created_by)", map[string]interface{}{
+	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, project_id, form_number, form_ticket, form_status, form_data, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :project_id,:form_number, :form_ticket, :form_status, :form_data, :created_by)", map[string]interface{}{
 		"form_id":     appID,
 		"form_uuid":   uuidString,
 		"document_id": documentID,
 		"user_id":     userID,
 		"project_id":  projectID,
-		"form_name":   addForm.FormName,
 		"form_number": formNumber,
 		"form_ticket": addForm.FormTicket,
 		"form_status": formStatus,
@@ -153,7 +152,7 @@ func AddITCM(addForm models.Form, itcm models.ITCM, isPublished bool, userID int
 // menampilkan form tanpa token
 func GetAllFormITCM() ([]models.FormsITCM, error) {
 	rows, err := db.Query(`SELECT
-		f.form_uuid, f.form_name,
+		f.form_uuid,
 		REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
 		f.form_ticket, f.form_status,
 		d.document_name,
@@ -191,7 +190,6 @@ func GetAllFormITCM() ([]models.FormsITCM, error) {
 		var form models.FormsITCM
 		err := rows.Scan(
 			&form.FormUUID,
-			&form.FormName,
 			&form.FormNumber,
 			&form.FormTicket,
 			&form.FormStatus,
@@ -226,7 +224,7 @@ func GetAllFormITCM() ([]models.FormsITCM, error) {
 // menampilkan form berdasar user/ milik dia sendiri
 func GetAllITCMbyUserID(userID int) ([]models.FormsITCM, error) {
 	rows, err := db.Query(`SELECT
-		f.form_uuid, f.form_name,
+		f.form_uuid,
 		REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
 		f.form_ticket, f.form_status,
 		d.document_name,
@@ -264,7 +262,6 @@ func GetAllITCMbyUserID(userID int) ([]models.FormsITCM, error) {
 		var form models.FormsITCM
 		err := rows.Scan(
 			&form.FormUUID,
-			&form.FormName,
 			&form.FormNumber,
 			&form.FormTicket,
 			&form.FormStatus,
@@ -300,7 +297,7 @@ func GetAllITCMbyUserID(userID int) ([]models.FormsITCM, error) {
 // menampilkan form dari admin
 func GetAllFormITCMAdmin() ([]models.FormsITCM, error) {
 	rows, err := db.Query(`SELECT
-		f.form_uuid, f.form_name,
+		f.form_uuid,
 		REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
 		f.form_ticket, f.form_status,
 		d.document_name,
@@ -338,7 +335,6 @@ func GetAllFormITCMAdmin() ([]models.FormsITCM, error) {
 		var form models.FormsITCM
 		err := rows.Scan(
 			&form.FormUUID,
-			&form.FormName,
 			&form.FormNumber,
 			&form.FormTicket,
 			&form.FormStatus,
@@ -375,7 +371,7 @@ func GetSpecITCM(id string) (models.FormITCM, error) {
 	var specITCM models.FormITCM
 
 	err := db.Get(&specITCM, `SELECT 
-	f.form_uuid, f.form_name, 
+	f.form_uuid, 
 	REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
 	f.form_ticket, f.form_status,
 	d.document_name,
@@ -416,7 +412,6 @@ func GetSpecAllITCM(id string) ([]models.FormITCMAll, error) {
 
 	err := db.Select(&speccITCM, `SELECT
     f.form_uuid,
-    f.form_name,
     REPLACE(f.form_number, '/ITCM/', '/') AS formatted_form_number,
     f.form_ticket,
     f.form_status,
@@ -485,9 +480,8 @@ func UpdateFormITCM(updateITCM models.Form, data models.ITCM, username string, u
 	}
 	log.Println("ITCM JSON:", string(daJSON))
 
-	_, err = db.NamedExec("UPDATE form_ms SET user_id = :user_id, form_name = :form_name, form_ticket = :form_ticket, form_status = :form_status, form_data = :form_data, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id AND form_status = 'Draft'", map[string]interface{}{
+	_, err = db.NamedExec("UPDATE form_ms SET user_id = :user_id, form_ticket = :form_ticket, form_status = :form_status, form_data = :form_data, updated_by = :updated_by, updated_at = :updated_at WHERE form_uuid = :id AND form_status = 'Draft'", map[string]interface{}{
 		"user_id":     userID,
-		"form_name":   updateITCM.FormName,
 		"form_ticket": updateITCM.FormTicket,
 		"project_id":  projectID,
 		"form_status": formStatus,

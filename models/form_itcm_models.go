@@ -16,7 +16,6 @@ type ITCM struct {
 
 type FormsITCM struct {
 	FormUUID       string         `json:"form_uuid" db:"form_uuid"`
-	FormName       string         `json:"form_name" db:"form_name"`
 	FormNumber     string         `json:"form_number" db:"form_number"`
 	FormTicket     string         `json:"form_ticket" db:"form_ticket"`
 	FormStatus     string         `json:"form_status" db:"form_status"`
@@ -41,7 +40,6 @@ type FormsITCM struct {
 
 type FormITCM struct {
 	FormUUID            string         `json:"form_uuid" db:"form_uuid"`
-	FormName            string         `json:"form_name" db:"form_name"`
 	FormattedFormNumber string         `json:"formatted_form_number" db:"formatted_form_number"`
 	FormTicket          string         `json:"form_ticket" db:"form_ticket"`
 	FormStatus          string         `json:"form_status" db:"form_status"`
@@ -66,7 +64,6 @@ type FormITCM struct {
 
 type FormITCMAll struct {
 	FormUUID            string         `json:"form_uuid" db:"form_uuid"`
-	FormName            string         `json:"form_name" db:"form_name"`
 	FormattedFormNumber string         `json:"formatted_form_number" db:"formatted_form_number"`
 	FormTicket          string         `json:"form_ticket" db:"form_ticket"`
 	FormStatus          string         `json:"form_status" db:"form_status"`
