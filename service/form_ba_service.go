@@ -35,39 +35,12 @@ func AddBA(addForm models.Form, ba models.BA, isPublished bool, userID int, user
 		return err
 	}
 
-	// var projectID int64
-	// if isProject {
-	// 	err = db.Get(&projectID, "SELECT project_id FROM project_ms WHERE project_code = $1", projectCode)
-	// 	if err != nil {
-	// 		log.Println("Error getting project_id:", err)
-	// 		return err
-	// 	}
-	// }
-
 	var documentCode string
 	err = db.Get(&documentCode, "SELECT document_code FROM document_ms WHERE document_uuid = $1", addForm.DocumentUUID)
 	if err != nil {
 		log.Println("Error getting document code:", err)
 		return err
 	}
-
-	// Generate form number based on document code
-	// var formNumber string
-	// if isProject {
-	// 	// Format nomor formulir sesuai dengan proyek
-	// 	formNumber, err = generateProjectFormNumber(documentID, projectID, recursionCount)
-	// 	if err != nil {
-	// 		log.Println("Error generating project form number:", err)
-	// 		return err
-	// 	}
-	// } else {
-	// 	// Format nomor formulir sesuai dengan divisi
-	// 	formNumber, err = generateFormNumber(documentID, divisionCode, recursionCount+1)
-	// 	if err != nil {
-	// 		log.Println("Error generating division form number:", err)
-	// 		return err
-	// 	}
-	// }
 
 	formNumber, err := generateFormNumber(documentID, divisionCode, recursionCount+1)
 	if err != nil {
@@ -82,7 +55,7 @@ func AddBA(addForm models.Form, ba models.BA, isPublished bool, userID int, user
 		return err
 	}
 
-	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, project_id, form_name, form_number, form_ticket, form_status, form_data, is_project, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :project_id, :form_name, :form_number, :form_ticket, :form_status, :form_data, :is_project, :created_by)", map[string]interface{}{
+	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, project_id, form_name, form_number, form_ticket, form_status, form_data, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :project_id, :form_name, :form_number, :form_ticket, :form_status, :form_data, :created_by)", map[string]interface{}{
 		"form_id":     appID,
 		"form_uuid":   uuidString,
 		"document_id": documentID,
@@ -126,8 +99,9 @@ func GetAllFormBA() ([]models.FormsBA, error) {
 			f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
 			(f.form_data->>'judul')::text AS judul,
 			(f.form_data->>'tanggal')::text AS tanggal,
-			(f.form_data->>'dokumen_da')::text AS dokumen_da,
-			(f.form_data->>'dokumen_itcm')::text AS dokumen_itcm,
+			(f.form_data->>'nama_aplikasi')::text AS nama_aplikasi,
+			(f.form_data->>'no_da')::text AS no_da,
+			(f.form_data->>'no_itcm')::text AS no_itcm,
 			(f.form_data->>'dilakukan_oleh')::text AS dilakukan_oleh,
 			(f.form_data->>'didampingi_oleh')::text AS didampingi_oleh
 			FROM 
@@ -159,9 +133,6 @@ func GetAllFormBA() ([]models.FormsBA, error) {
 			&form.FormStatus,
 			&form.DocumentName,
 			&form.ProjectName,
-			&form.IsApprove,
-			&form.Reason,
-			&form.ApprovalStatus,
 			&form.CreatedBy,
 			&form.CreatedAt,
 			&form.UpdatedBy,
@@ -170,8 +141,9 @@ func GetAllFormBA() ([]models.FormsBA, error) {
 			&form.DeletedAt,
 			&form.Judul,
 			&form.Tanggal,
-			&form.DokumenDA,
-			&form.DokumenITCM,
+			&form.AppName,
+			&form.NoDA,
+			&form.NoITCM,
 			&form.DilakukanOleh,
 			&form.DidampingiOleh,
 		)
@@ -195,8 +167,9 @@ func GetSpecBA(id string) (models.FormsBA, error) {
 	f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
 	(f.form_data->>'judul')::text AS judul,
 	(f.form_data->>'tanggal')::text AS tanggal,
-	(f.form_data->>'dokumen_da')::text AS dokumen_da,
-	(f.form_data->>'dokumen_itcm')::text AS dokumen_itcm,
+	(f.form_data->>'nama_aplikasi')::text AS nama_aplikasi,
+	(f.form_data->>'no_da')::text AS no_da,
+	(f.form_data->>'no_itcm')::text AS no_itcm,
 	(f.form_data->>'dilakukan_oleh')::text AS dilakukan_oleh,
 	(f.form_data->>'didampingi_oleh')::text AS didampingi_oleh
 	FROM 
@@ -206,7 +179,7 @@ LEFT JOIN
 LEFT JOIN 
 	project_ms p ON f.project_id = p.project_id
 	WHERE
-	d.document_code = 'BA' 
+	f.form_uuid = $1 AND d.document_code = 'BA' 
 	`, id)
 
 	if err != nil {
@@ -214,6 +187,42 @@ LEFT JOIN
 	}
 
 	return specBA, nil
+}
+func GetSpecAllBA(id string) ([]models.FormsBAAll, error) {
+	var forms []models.FormsBAAll
+
+	err := db.Select(&forms, `SELECT 
+	f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
+	d.document_name,
+	p.project_name,
+	f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+	(f.form_data->>'judul')::text AS judul,
+	(f.form_data->>'tanggal')::text AS tanggal,
+	(f.form_data->>'nama_aplikasi')::text AS nama_aplikasi,
+	(f.form_data->>'no_da')::text AS no_da,
+	(f.form_data->>'no_itcm')::text AS no_itcm,
+	(f.form_data->>'dilakukan_oleh')::text AS dilakukan_oleh,
+	(f.form_data->>'didampingi_oleh')::text AS didampingi_oleh,
+	sf.sign_uuid AS sign_uuid,
+    sf.name AS name,
+    sf.position AS position,
+    sf.role_sign AS role_sign
+	FROM
+    form_ms f
+LEFT JOIN 
+    document_ms d ON f.document_id = d.document_id
+LEFT JOIN 
+    project_ms p ON f.project_id = p.project_id
+LEFT JOIN
+    sign_form sf ON f.form_id = sf.form_id
+WHERE
+    f.form_uuid = $1 AND d.document_code = 'BA'
+	`, id)
+
+	if err != nil {
+		return nil, err
+	}
+	return forms, nil
 }
 
 func UpdateBA(updateBA models.Form, data models.BA, username string, userID int, isPublished bool, id string) (models.Form, error) {

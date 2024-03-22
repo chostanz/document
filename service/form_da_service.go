@@ -114,7 +114,7 @@ func AddDA(addDA models.Form, isPublished bool, username string, userID int, div
 		return err
 	}
 
-	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, form_name, form_number, form_ticket, form_status, form_data, is_project, project_id, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :form_name, :form_number, :form_ticket, :form_status, :form_data, :is_project, :project_id, :created_by)", map[string]interface{}{
+	_, err = db.NamedExec("INSERT INTO form_ms (form_id, form_uuid, document_id, user_id, form_name, form_number, form_ticket, form_status, form_data, project_id, created_by) VALUES (:form_id, :form_uuid, :document_id, :user_id, :form_name, :form_number, :form_ticket, :form_status, :form_data, :project_id, :created_by)", map[string]interface{}{
 		"form_id":     app_id,
 		"form_uuid":   uuidString,
 		"document_id": documentID,
@@ -153,10 +153,10 @@ func AddDA(addDA models.Form, isPublished bool, username string, userID int, div
 func GetAllFormDA() ([]models.Formss, error) {
 	rows, err := db.Query(`
 		SELECT 
-			f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, f.is_approved, f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+			f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, 
 			d.document_name,
 			p.project_name,
-			f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+			f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
 			(f.form_data->>'nama_analis')::text AS nama_analis,
 			(f.form_data->>'jabatan')::text AS jabatan,
 			(f.form_data->>'departemen')::text AS departemen,
@@ -164,11 +164,11 @@ func GetAllFormDA() ([]models.Formss, error) {
 			(f.form_data->>'detail_dampak_perubahan')::text AS detail_dampak_perubahan,
 			(f.form_data->>'rencana_pengembangan_perubahan')::text AS rencana_pengembangan_perubahan,
 			(f.form_data->>'rencana_pengujian_perubahan_sistem')::text AS rencana_pengujian_perubahan_sistem,
-			(f.form_data->>'rencana_rilis_perubahan_dan_implementasi')::text AS rencana_rilis_perubahan_dan_implementasi
+			(f.form_data->>'rencana_rilis_perubahan_dan_implementasi')::text AS rencana_rilis_perubahan_dan_implementasi,
 			CASE
-			WHEN f.is_approved IS NULL THEN 'Menunggu Disetujui'
-			WHEN f.is_approved = false THEN 'Tidak Disetujui'
-			WHEN f.is_approved = true THEN 'Disetujui'
+			WHEN f.is_approve IS NULL THEN 'Menunggu Disetujui'
+			WHEN f.is_approve = false THEN 'Tidak Disetujui'
+			WHEN f.is_approve = true THEN 'Disetujui'
 		END AS ApprovalStatus -- Alias the CASE expression as ApprovalStatus
 			FROM 
 			form_ms f
@@ -199,9 +199,7 @@ func GetAllFormDA() ([]models.Formss, error) {
 			&form.FormStatus,
 			&form.DocumentName,
 			&form.ProjectName,
-			&form.IsApprove,
 			&form.Reason,
-			&form.ApprovalStatus,
 			&form.CreatedBy,
 			&form.CreatedAt,
 			&form.UpdatedBy,
@@ -216,12 +214,164 @@ func GetAllFormDA() ([]models.Formss, error) {
 			&form.RencanaPengembanganPerubahan,
 			&form.RencanaPengujianPerubahanSistem,
 			&form.RencanaRilisPerubahanDanImplementasi,
+			&form.ApprovalStatus,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		// Append the form data to the slice
+		forms = append(forms, form)
+	}
+	// Return the forms as JSON response
+	return forms, nil
+}
+
+func GetAllDAbyUserID(userID int) ([]models.Formss, error) {
+	rows, err := db.Query(`
+	SELECT 
+		f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, 
+		d.document_name,
+		p.project_name,
+		f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+		(f.form_data->>'nama_analis')::text AS nama_analis,
+		(f.form_data->>'jabatan')::text AS jabatan,
+		(f.form_data->>'departemen')::text AS departemen,
+		(f.form_data->>'jenis_perubahan')::text AS jenis_perubahan,
+		(f.form_data->>'detail_dampak_perubahan')::text AS detail_dampak_perubahan,
+		(f.form_data->>'rencana_pengembangan_perubahan')::text AS rencana_pengembangan_perubahan,
+		(f.form_data->>'rencana_pengujian_perubahan_sistem')::text AS rencana_pengujian_perubahan_sistem,
+		(f.form_data->>'rencana_rilis_perubahan_dan_implementasi')::text AS rencana_rilis_perubahan_dan_implementasi,
+		CASE
+		WHEN f.is_approve IS NULL THEN 'Menunggu Disetujui'
+		WHEN f.is_approve = false THEN 'Tidak Disetujui'
+		WHEN f.is_approve = true THEN 'Disetujui'
+	END AS ApprovalStatus -- Alias the CASE expression as ApprovalStatus
+		FROM 
+		form_ms f
+	LEFT JOIN 
+		document_ms d ON f.document_id = d.document_id
+	LEFT JOIN 
+		project_ms p ON f.project_id = p.project_id
+		WHERE
+		f.user_id = $1 AND d.document_code = 'DA' 
+`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Slice to hold all form data
+	var forms []models.Formss
+
+	// Iterate through the rows
+	for rows.Next() {
+		// Scan the row into the Forms struct
+		var form models.Formss
+		err := rows.Scan(
+			&form.FormUUID,
+			&form.FormName,
+			&form.FormNumber,
+			&form.FormTicket,
+			&form.FormStatus,
+			&form.DocumentName,
+			&form.ProjectName,
+			&form.Reason,
+			&form.CreatedBy,
+			&form.CreatedAt,
+			&form.UpdatedBy,
+			&form.UpdatedAt,
+			&form.DeletedBy,
+			&form.DeletedAt,
+			&form.NamaAnalis,
+			&form.Jabatan,
+			&form.Departemen,
+			&form.JenisPerubahan,
+			&form.DetailDampakPerubahan,
+			&form.RencanaPengembanganPerubahan,
+			&form.RencanaPengujianPerubahanSistem,
+			&form.RencanaRilisPerubahanDanImplementasi,
+			&form.ApprovalStatus,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		forms = append(forms, form)
+	}
+	// Return the forms as JSON response
+	return forms, nil
+}
+
+func GetAllDAbyAdmin() ([]models.Formss, error) {
+	rows, err := db.Query(`
+	SELECT 
+		f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, 
+		d.document_name,
+		p.project_name,
+		f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+		(f.form_data->>'nama_analis')::text AS nama_analis,
+		(f.form_data->>'jabatan')::text AS jabatan,
+		(f.form_data->>'departemen')::text AS departemen,
+		(f.form_data->>'jenis_perubahan')::text AS jenis_perubahan,
+		(f.form_data->>'detail_dampak_perubahan')::text AS detail_dampak_perubahan,
+		(f.form_data->>'rencana_pengembangan_perubahan')::text AS rencana_pengembangan_perubahan,
+		(f.form_data->>'rencana_pengujian_perubahan_sistem')::text AS rencana_pengujian_perubahan_sistem,
+		(f.form_data->>'rencana_rilis_perubahan_dan_implementasi')::text AS rencana_rilis_perubahan_dan_implementasi,
+		CASE
+		WHEN f.is_approve IS NULL THEN 'Menunggu Disetujui'
+		WHEN f.is_approve = false THEN 'Tidak Disetujui'
+		WHEN f.is_approve = true THEN 'Disetujui'
+	END AS ApprovalStatus -- Alias the CASE expression as ApprovalStatus
+		FROM 
+		form_ms f
+	LEFT JOIN 
+		document_ms d ON f.document_id = d.document_id
+	LEFT JOIN 
+		project_ms p ON f.project_id = p.project_id
+		WHERE
+		d.document_code = 'DA' 
+`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Slice to hold all form data
+	var forms []models.Formss
+
+	// Iterate through the rows
+	for rows.Next() {
+		// Scan the row into the Forms struct
+		var form models.Formss
+		err := rows.Scan(
+			&form.FormUUID,
+			&form.FormName,
+			&form.FormNumber,
+			&form.FormTicket,
+			&form.FormStatus,
+			&form.DocumentName,
+			&form.ProjectName,
+			&form.Reason,
+			&form.CreatedBy,
+			&form.CreatedAt,
+			&form.UpdatedBy,
+			&form.UpdatedAt,
+			&form.DeletedBy,
+			&form.DeletedAt,
+			&form.NamaAnalis,
+			&form.Jabatan,
+			&form.Departemen,
+			&form.JenisPerubahan,
+			&form.DetailDampakPerubahan,
+			&form.RencanaPengembanganPerubahan,
+			&form.RencanaPengujianPerubahanSistem,
+			&form.RencanaRilisPerubahanDanImplementasi,
+			&form.ApprovalStatus,
+		)
+		if err != nil {
+			return nil, err
+		}
+
 		forms = append(forms, form)
 	}
 	// Return the forms as JSON response
@@ -232,29 +382,31 @@ func GetSpecDA(id string) (models.Formss, error) {
 	var specDA models.Formss
 
 	err := db.Get(&specDA, `SELECT 
-		f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, f.is_approved, f.reason, f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
-		d.document_name,
-		p.project_name,
-		f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
-		(f.form_data->>'nama_analis')::text AS nama_analis,
-		(f.form_data->>'jabatan')::text AS jabatan,
-		(f.form_data->>'departemen')::text AS departemen,
-		(f.form_data->>'jenis_perubahan')::text AS jenis_perubahan,
-		(f.form_data->>'detail_dampak_perubahan')::text AS detail_dampak_perubahan,
-		(f.form_data->>'rencana_pengembangan_perubahan')::text AS rencana_pengembangan_perubahan,
-		(f.form_data->>'rencana_pengujian_perubahan_sistem')::text AS rencana_pengujian_perubahan_sistem,
-		(f.form_data->>'rencana_rilis_perubahan_dan_implementasi')::text AS rencana_rilis_perubahan_dan_implementasi,
-		CASE
-		WHEN f.is_approved IS NULL THEN 'Menunggu Disetujui'
-		WHEN f.is_approved = false THEN 'Tidak Disetujui'
-		WHEN f.is_approved = true THEN 'Disetujui'
-		FROM 
-		form_ms f
-	LEFT JOIN 
-		document_ms d ON f.document_id = d.document_id
-	LEFT JOIN 
-		project_ms p ON f.project_id = p.project_id
-	WHERE f.form_uuid = $1 and d.document_code = 'DA' 
+	f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
+	d.document_name,
+	p.project_name,
+	CASE
+		WHEN f.is_approve IS NULL THEN 'Menunggu Disetujui'
+		WHEN f.is_approve = false THEN 'Tidak Disetujui'
+		WHEN f.is_approve = true THEN 'Disetujui'
+	END AS ApprovalStatus,
+	f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+	(f.form_data->>'nama_analis')::text AS nama_analis,
+	(f.form_data->>'jabatan')::text AS jabatan,
+	(f.form_data->>'departemen')::text AS departemen,
+	(f.form_data->>'jenis_perubahan')::text AS jenis_perubahan,
+	(f.form_data->>'detail_dampak_perubahan')::text AS detail_dampak_perubahan,
+	(f.form_data->>'rencana_pengembangan_perubahan')::text AS rencana_pengembangan_perubahan,
+	(f.form_data->>'rencana_pengujian_perubahan_sistem')::text AS rencana_pengujian_perubahan_sistem,
+	(f.form_data->>'rencana_rilis_perubahan_dan_implementasi')::text AS rencana_rilis_perubahan_dan_implementasi
+FROM 
+	form_ms f
+LEFT JOIN 
+	document_ms d ON f.document_id = d.document_id
+LEFT JOIN 
+	project_ms p ON f.project_id = p.project_id
+WHERE
+	f.form_uuid = $1 and d.document_code = 'DA' 
 `, id)
 
 	if err != nil {
@@ -264,31 +416,43 @@ func GetSpecDA(id string) (models.Formss, error) {
 	return specDA, nil
 }
 
-func GetSpecFormDA(id string) ([]models.Formss, error) {
-	var signatories []models.Formss
+func GetSpecAllDA(id string) ([]models.FormsDAAll, error) {
+	var signatories []models.FormsDAAll
 
 	err := db.Select(&signatories, `SELECT 
-		f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
-		d.document_name,
-		p.project_name,
-		f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
-		(f.form_data->>'nama_analis')::text AS nama_analis,
-		(f.form_data->>'jabatan')::text AS jabatan,
-		(f.form_data->>'departemen')::text AS departemen,
-		(f.form_data->>'jenis_perubahan')::text AS jenis_perubahan,
-		(f.form_data->>'detail_dampak_perubahan')::text AS detail_dampak_perubahan,
-		(f.form_data->>'rencana_pengembangan_perubahan')::text AS rencana_pengembangan_perubahan,
-		(f.form_data->>'rencana_pengujian_perubahan_sistem')::text AS rencana_pengujian_perubahan_sistem,
-		(f.form_data->>'rencana_rilis_perubahan_dan_implementasi')::text AS rencana_rilis_perubahan_dan_implementasi
-	FROM 
-		form_ms f
-	LEFT JOIN 
-		document_ms d ON f.document_id = d.document_id
-	LEFT JOIN 
-		project_ms p ON f.project_id = p.project_id
-		WHERE
-		f.form_uuid = $1 and d.document_code = 'DA' 
-`)
+	f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status,
+	d.document_name,
+	p.project_name,
+	CASE
+		WHEN f.is_approve IS NULL THEN 'Menunggu Disetujui'
+		WHEN f.is_approve = false THEN 'Tidak Disetujui'
+		WHEN f.is_approve = true THEN 'Disetujui'
+	END AS ApprovalStatus,
+	f.created_by, f.created_at, f.updated_by, f.updated_at, f.deleted_by, f.deleted_at,
+	(f.form_data->>'nama_analis')::text AS nama_analis,
+	(f.form_data->>'jabatan')::text AS jabatan,
+	(f.form_data->>'departemen')::text AS departemen,
+	(f.form_data->>'jenis_perubahan')::text AS jenis_perubahan,
+	(f.form_data->>'detail_dampak_perubahan')::text AS detail_dampak_perubahan,
+	(f.form_data->>'rencana_pengembangan_perubahan')::text AS rencana_pengembangan_perubahan,
+	(f.form_data->>'rencana_pengujian_perubahan_sistem')::text AS rencana_pengujian_perubahan_sistem,
+	(f.form_data->>'rencana_rilis_perubahan_dan_implementasi')::text AS rencana_rilis_perubahan_dan_implementasi,
+	sf.sign_uuid AS sign_uuid,
+    sf.name AS name,
+    sf.position AS position,
+    sf.role_sign AS role_sign
+FROM
+    form_ms f
+LEFT JOIN 
+    document_ms d ON f.document_id = d.document_id
+LEFT JOIN 
+    project_ms p ON f.project_id = p.project_id
+LEFT JOIN
+    sign_form sf ON f.form_id = sf.form_id
+WHERE
+    f.form_uuid = $1 AND d.document_code = 'DA'
+	`, id)
+
 	if err != nil {
 		return nil, err
 	}
