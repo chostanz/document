@@ -425,7 +425,7 @@ LEFT JOIN
 LEFT JOIN 
 	project_ms p ON f.project_id = p.project_id
 WHERE
-	f.form_uuid = $1 and d.document_code = 'DA' 
+	f.form_uuid = $1 and d.document_code = 'DA'  AND f.deleted_at IS NULL
 `, id)
 
 	if err != nil {
@@ -469,7 +469,7 @@ LEFT JOIN
 LEFT JOIN
     sign_form sf ON f.form_id = sf.form_id
 WHERE
-    f.form_uuid = $1 AND d.document_code = 'DA'
+    f.form_uuid = $1 AND d.document_code = 'DA'  AND f.deleted_at IS NULL
 	`, id)
 
 	if err != nil {

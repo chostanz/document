@@ -421,7 +421,7 @@ LEFT JOIN
 LEFT JOIN 
 	project_ms p ON f.project_id = p.project_id
 WHERE
-    f.form_uuid = $1 AND d.document_code = 'ITCM'
+    f.form_uuid = $1 AND d.document_code = 'ITCM'  AND f.deleted_at IS NULL
 	`, id)
 	if err != nil {
 		return models.FormITCM{}, err
@@ -474,7 +474,7 @@ LEFT JOIN
 LEFT JOIN
     sign_form sf ON f.form_id = sf.form_id
 WHERE
-    f.form_uuid = $1 AND d.document_code = 'ITCM'
+    f.form_uuid = $1 AND d.document_code = 'ITCM'  AND f.deleted_at IS NULL
 	`, id)
 
 	if err != nil {
