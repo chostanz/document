@@ -526,3 +526,98 @@ func UpdateFormDA(c echo.Context) error {
 		Status:  true,
 	})
 }
+
+func DeleteForm(c echo.Context) error {
+	tokenString := c.Request().Header.Get("Authorization")
+	secretKey := "secretJwToken"
+
+	if tokenString == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak ditemukan!",
+			"status":  false,
+		})
+	}
+
+	if !strings.HasPrefix(tokenString, "Bearer ") {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	tokenOnly := strings.TrimPrefix(tokenString, "Bearer ")
+
+	//dekripsi token JWE
+	decrypted, err := DecryptJWE(tokenOnly, secretKey)
+	if err != nil {
+		fmt.Println("Gagal mendekripsi token:", err)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	var claims JwtCustomClaims
+	errJ := json.Unmarshal([]byte(decrypted), &claims)
+	if errJ != nil {
+		fmt.Println("Gagal mengurai klaim:", errJ)
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"code":    401,
+			"message": "Token tidak valid!",
+			"status":  false,
+		})
+	}
+
+	var userName string
+
+	if name, ok := c.Get("user_name").(string); ok {
+		userName = name
+	} else {
+		// Jika gagal mendapatkan nama pengguna, tangani kesalahan di sini
+		log.Println("Tidak dapat mengonversi user_name ke string")
+		return c.JSON(http.StatusBadRequest, &models.Response{
+			Code:    400,
+			Message: "Data tidak valid!",
+			Status:  false,
+		})
+	}
+	id := c.Param("id")
+
+	perviousContent, errGet := service.ShowFormById(id)
+	if errGet != nil {
+		log.Print(errGet)
+		return c.JSON(http.StatusNotFound, &models.Response{
+			Code:    404,
+			Message: "Gagal mengupdate formulir. Formulir tidak ditemukan!",
+			Status:  false,
+		})
+	}
+
+	errService := service.DeleteForm(id, userName)
+	if errService != nil {
+		log.Println("Kesalahan selama pembaruan:", errService)
+		if errService.Error() == "You are not authorized to update this form" {
+			return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+				"code":    401,
+				"message": "Anda tidak diizinkan untuk memperbarui formulir ini",
+				"status":  false,
+			})
+		} else {
+			return c.JSON(http.StatusInternalServerError, &models.Response{
+				Code:    500,
+				Message: "Terjadi kesalahan internal pada server. Mohon coba beberapa saat lagi!",
+				Status:  false,
+			})
+		}
+	}
+
+	log.Println(perviousContent)
+	return c.JSON(http.StatusOK, &models.Response{
+		Code:    200,
+		Message: "Formulir berhasil dihapus!",
+		Status:  true,
+	})
+}

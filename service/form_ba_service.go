@@ -132,7 +132,7 @@ func GetAllFormBA() ([]models.FormsBA, error) {
 		LEFT JOIN 
 			project_ms p ON f.project_id = p.project_id
 			WHERE
-			d.document_code = 'BA' 
+			d.document_code = 'BA' AND f.deleted_at IS NULL
 	`)
 	if err != nil {
 		return nil, err
@@ -199,7 +199,7 @@ func GetAllBAbyUserID(userID int) ([]models.FormsBA, error) {
 		LEFT JOIN 
 			project_ms p ON f.project_id = p.project_id
 			WHERE
-			d.document_code = 'BA' 
+			d.document_code = 'BA' AND f.deleted_at IS NULL
 	`)
 	if err != nil {
 		return nil, err
@@ -266,7 +266,7 @@ func GetAllBAbyAdmin() ([]models.FormsBA, error) {
 		LEFT JOIN 
 			project_ms p ON f.project_id = p.project_id
 			WHERE
-			d.document_code = 'BA' 
+			d.document_code = 'BA' AND f.deleted_at IS NULL
 	`)
 	if err != nil {
 		return nil, err

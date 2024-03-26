@@ -199,7 +199,7 @@ func GetAllFormDA() ([]models.Formss, error) {
 		LEFT JOIN 
 			project_ms p ON f.project_id = p.project_id
 			WHERE
-			d.document_code = 'DA' 
+			d.document_code = 'DA' AND f.deleted_at IS NULL
 	`)
 	if err != nil {
 		return nil, err
@@ -274,7 +274,7 @@ func GetAllDAbyUserID(userID int) ([]models.Formss, error) {
 	LEFT JOIN 
 		project_ms p ON f.project_id = p.project_id
 		WHERE
-		f.user_id = $1 AND d.document_code = 'DA' 
+		f.user_id = $1 AND d.document_code = 'DA'  AND f.deleted_at IS NULL
 `, userID)
 	if err != nil {
 		return nil, err
@@ -349,7 +349,7 @@ func GetAllDAbyAdmin() ([]models.Formss, error) {
 	LEFT JOIN 
 		project_ms p ON f.project_id = p.project_id
 		WHERE
-		d.document_code = 'DA' 
+		d.document_code = 'DA'  AND f.deleted_at IS NULL
 `)
 	if err != nil {
 		return nil, err
@@ -513,4 +513,38 @@ func UpdateFormDA(updateDA models.Form, data models.DampakAnalisa, username stri
 		return models.Form{}, err
 	}
 	return updateDA, nil
+}
+
+var ErrNotFound = errors.New("form not found")
+
+func DeleteForm(id string, username string) error {
+	currentTime := time.Now()
+
+	result, err := db.Exec("UPDATE form_ms SET deleted_by = $1, deleted_at = $2, form_number = '' WHERE form_uuid = $3", username, currentTime, id)
+	if err != nil {
+		return err
+	}
+
+	// Soft delete related sign_form entries
+	deleteSignFormQuery := `
+		UPDATE sign_form
+		SET deleted_by = $1, deleted_at = NOW()
+		WHERE form_id = (
+			SELECT form_id
+			FROM form_ms
+			WHERE form_uuid = $2
+		)
+	`
+	_, err = db.Exec(deleteSignFormQuery, username, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNotFound // Mengembalikan error jika tidak ada rekaman yang cocok
+	}
+
+	return nil
+
 }

@@ -107,5 +107,8 @@ func Route() *echo.Echo {
 	superAdmin.POST("/project/add", controller.AddProject)
 	superAdmin.PUT("/project/update/:id", controller.UpdateProject)
 
+	//delete form
+	adminMember.PUT("/form/delete/:id", controller.DeleteForm)
+
 	return e
 }

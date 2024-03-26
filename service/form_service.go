@@ -286,7 +286,7 @@ func GetAllForm() ([]models.Forms, error) {
 
 	form := []models.Forms{}
 
-	rows, errSelect := db.Queryx("SELECT f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.deleted_at IS NULL")
+	rows, errSelect := db.Queryx("SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.deleted_at IS NULL")
 	//rows, errSelect := db.Queryx("select form_uuid, form_number, form_ticket, form_status, document_id, user_id, created_by, created_at, updated_by, updated_at from form_ms WHERE deleted_at IS NULL")
 	if errSelect != nil {
 		return nil, errSelect
@@ -304,7 +304,7 @@ func GetAllForm() ([]models.Forms, error) {
 func MyForm(userID int) ([]models.Forms, error) {
 	var form []models.Forms
 
-	errSelect := db.Select(&form, "SELECT f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.user_id = $1 AND f.deleted_at IS NULL", userID)
+	errSelect := db.Select(&form, "SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.user_id = $1 AND f.deleted_at IS NULL", userID)
 	//rows, errSelect := db.Queryx("select form_uuid, form_number, form_ticket, form_status, document_id, user_id, created_by, created_at, updated_by, updated_at from form_ms WHERE deleted_at IS NULL")
 	if errSelect != nil {
 		log.Print(errSelect)
@@ -322,7 +322,7 @@ func FormByDivision(divisionCode string) ([]models.Forms, error) {
 	var form []models.Forms
 
 	errSelect := db.Select(&form, `
-    SELECT f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name 
+    SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name 
     FROM form_ms f 
     JOIN document_ms d ON f.document_id = d.document_id 
     WHERE f.deleted_at IS NULL AND SPLIT_PART(f.form_number, '/', 2) = $1
@@ -344,7 +344,7 @@ func ShowFormById(id string) (models.Forms, error) {
 	var form models.Forms
 
 	//err := db.Get(&form, "SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.user_id, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.form_uuid = $1 AND f.deleted_at IS NULL", id)
-	err := db.Get(&form, "SELECT f.form_uuid, f.form_name, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.form_uuid = $1 AND f.deleted_at IS NULL", id)
+	err := db.Get(&form, "SELECT f.form_uuid, f.form_number, f.form_ticket, f.form_status, f.created_by, f.created_at, f.updated_by, f.updated_at, d.document_name FROM form_ms f JOIN  document_ms d ON f.document_id = d.document_id WHERE f.form_uuid = $1 AND f.deleted_at IS NULL", id)
 	if err != nil {
 		return models.Forms{}, err
 	}

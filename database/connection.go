@@ -25,7 +25,7 @@ func NewConnection() *sqlx.DB {
 	if err != nil {
 		return nil
 	}
-	defer otherDB.Close()
+	//defer otherDB.Close()
 
 	return otherDB
 }
