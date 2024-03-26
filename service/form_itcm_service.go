@@ -9,10 +9,12 @@ import (
 	"log"
 	"time"
 
+	_ "github.com/lib/pq"
+
 	"github.com/google/uuid"
 )
 
-func generateFormNumberITCM(documentID int64, divisionCode string, recursionCount int) (string, error) {
+func generateFormNumberITCM(documentID int64, recursionCount int) (string, error) {
 	const maxRecursionCount = 1000
 
 	// Check if the maximum recursion count is reached
@@ -70,6 +72,7 @@ func generateFormNumberITCM(documentID int64, divisionCode string, recursionCoun
 
 	return formNumberWithDivision, nil
 }
+
 func AddITCM(addForm models.Form, itcm models.ITCM, isPublished bool, userID int, username string, divisionCode string, recursionCount int, signatories []models.Signatory) error {
 	currentTimestamp := time.Now().UnixNano() / int64(time.Microsecond)
 	uniqueID := uuid.New().ID()
@@ -103,7 +106,7 @@ func AddITCM(addForm models.Form, itcm models.ITCM, isPublished bool, userID int
 		return err
 	}
 
-	formNumber, err := generateFormNumberITCM(documentID, divisionCode, recursionCount+1)
+	formNumber, err := generateFormNumberITCM(documentID, recursionCount+1)
 	if err != nil {
 		log.Println("Error generating project form number:", err)
 		return err
@@ -131,11 +134,33 @@ func AddITCM(addForm models.Form, itcm models.ITCM, isPublished bool, userID int
 	if err != nil {
 		return err
 	}
+	personalNames, err := GetAllPersonalName() // Mengambil daftar semua personal name
+	if err != nil {
+		log.Println("Error getting personal names:", err)
+		return err
+	}
 
 	for _, signatory := range signatories {
 		uuidString := uuid.New().String()
-		_, err := db.NamedExec("INSERT INTO sign_form (sign_uuid, form_id, name, position, role_sign, created_by) VALUES (:sign_uuid, :form_id, :name, :position, :role_sign, :created_by)", map[string]interface{}{
+
+		// Mencari user_id yang sesuai dengan personal_name yang dipilih
+		var userID string
+		for _, personal := range personalNames {
+			if personal.PersonalName == signatory.Name {
+				userID = personal.UserID
+				break
+			}
+		}
+
+		// Memastikan user_id ditemukan untuk personal_name yang dipilih
+		if userID == "" {
+			log.Printf("User ID not found for personal name: %s\n", signatory.Name)
+			continue
+		}
+
+		_, err := db.NamedExec("INSERT INTO sign_form (sign_uuid, form_id, user_id, name, position, role_sign, created_by) VALUES (:sign_uuid, :form_id, :user_id, :name, :position, :role_sign, :created_by)", map[string]interface{}{
 			"sign_uuid":  uuidString,
+			"user_id":    userID,
 			"form_id":    appID,
 			"name":       signatory.Name,
 			"position":   signatory.Position,
@@ -177,7 +202,7 @@ func GetAllFormITCM() ([]models.FormsITCM, error) {
 	LEFT JOIN
 		project_ms p ON f.project_id = p.project_id
 	WHERE
-		d.document_code = 'ITCM'
+		d.document_code = 'ITCM' AND f.deleted_at IS NULL
 	`)
 	var forms []models.FormsITCM
 	//rows, err := db.Query(&forms, query, userID)
@@ -249,7 +274,7 @@ func GetAllITCMbyUserID(userID int) ([]models.FormsITCM, error) {
 		LEFT JOIN 
 			project_ms p ON f.project_id = p.project_id
 		WHERE
-			f.user_id = $1 AND d.document_code = 'ITCM'
+			f.user_id = $1 AND d.document_code = 'ITCM' AND f.deleted_at IS NULL
 			`, userID)
 	var forms []models.FormsITCM
 	//rows, err := db.Query(&forms, query, userID)
@@ -322,7 +347,7 @@ func GetAllFormITCMAdmin() ([]models.FormsITCM, error) {
 	LEFT JOIN
 		project_ms p ON f.project_id = p.project_id
 	WHERE
-		d.document_code = 'ITCM'
+		d.document_code = 'ITCM' AND f.deleted_at IS NULL
 	`)
 	var forms []models.FormsITCM
 	//rows, err := db.Query(&forms, query, userID)
@@ -496,3 +521,7 @@ func UpdateFormITCM(updateITCM models.Form, data models.ITCM, username string, u
 	return updateITCM, nil
 
 }
+
+// func MySignature () ([]models.){
+
+// }

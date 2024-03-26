@@ -6,6 +6,30 @@ import (
 	"time"
 )
 
+func GetAllPersonalName() ([]models.Personal, error) {
+	getUserAppRole := []models.Personal{}
+
+	// Lakukan query ke database lain
+	rows, err := db2.Queryx("SELECT u.user_id, pd.personal_name FROM user_ms u JOIN personal_data_ms pd ON u.user_id = pd.user_id")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Proses data hasil query
+	for rows.Next() {
+		place := models.Personal{}
+		err := rows.StructScan(&place)
+		if err != nil {
+			log.Println("Error scanning row to struct:", err)
+			continue
+		}
+		getUserAppRole = append(getUserAppRole, place)
+	}
+
+	return getUserAppRole, nil
+}
+
 func GetSignatureForm(id string) ([]models.Signatories, error) {
 	var signatories []models.Signatories
 

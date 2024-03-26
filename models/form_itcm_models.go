@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+type Personal struct {
+	UserID       string `json:"user_id" db:"user_id"`
+	PersonalName string `json:"personal_name" db:"personal_name"`
+}
+
 type ITCM struct {
 	NoDA          string `json:"no_da" validate:"required"`
 	NamaPemohon   string `json:"nama_pemohon" validate:"required"`

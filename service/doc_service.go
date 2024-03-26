@@ -16,6 +16,8 @@ import (
 
 var db = database.Connection()
 
+var db2 = database.NewConnection()
+
 type JwtCustomClaims struct {
 	UserUUID string `json:"user_uuid"`
 	UserName string `json:"user_name"`

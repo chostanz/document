@@ -71,11 +71,33 @@ func AddBA(addForm models.Form, ba models.BA, isPublished bool, userID int, user
 	if err != nil {
 		return err
 	}
+	personalNames, err := GetAllPersonalName() // Mengambil daftar semua personal name
+	if err != nil {
+		log.Println("Error getting personal names:", err)
+		return err
+	}
 
 	for _, signatory := range signatories {
-		uuidString := uuid.New().String() // Gunakan uuid.New() dari paket UUID yang diimpor
-		_, err := db.NamedExec("INSERT INTO sign_form (sign_uuid, form_id, name, position, role_sign, created_by) VALUES (:sign_uuid, :form_id, :name, :position, :role_sign, :created_by)", map[string]interface{}{
+		uuidString := uuid.New().String()
+
+		// Mencari user_id yang sesuai dengan personal_name yang dipilih
+		var userID string
+		for _, personal := range personalNames {
+			if personal.PersonalName == signatory.Name {
+				userID = personal.UserID
+				break
+			}
+		}
+
+		// Memastikan user_id ditemukan untuk personal_name yang dipilih
+		if userID == "" {
+			log.Printf("User ID not found for personal name: %s\n", signatory.Name)
+			continue
+		}
+
+		_, err := db.NamedExec("INSERT INTO sign_form (sign_uuid, form_id, user_id, name, position, role_sign, created_by) VALUES (:sign_uuid, :form_id, :user_id, :name, :position, :role_sign, :created_by)", map[string]interface{}{
 			"sign_uuid":  uuidString,
+			"user_id":    userID,
 			"form_id":    appID,
 			"name":       signatory.Name,
 			"position":   signatory.Position,
